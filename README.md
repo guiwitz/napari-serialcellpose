@@ -1,11 +1,11 @@
-# napari-serialcell
+# napari-serialcellpose
 
-[![License](https://img.shields.io/pypi/l/napari-serialcell.svg?color=green)](https://github.com/guiwitz/napari-serialcell/raw/main/LICENSE)
-[![PyPI](https://img.shields.io/pypi/v/napari-serialcell.svg?color=green)](https://pypi.org/project/napari-serialcell)
-[![Python Version](https://img.shields.io/pypi/pyversions/napari-serialcell.svg?color=green)](https://python.org)
-[![tests](https://github.com/guiwitz/napari-serialcell/workflows/tests/badge.svg)](https://github.com/guiwitz/napari-serialcell/actions)
-[![codecov](https://codecov.io/gh/guiwitz/napari-serialcell/branch/main/graph/badge.svg)](https://codecov.io/gh/guiwitz/napari-serialcell)
-[![napari hub](https://img.shields.io/endpoint?url=https://api.napari-hub.org/shields/napari-serialcell)](https://napari-hub.org/plugins/napari-serialcell)
+[![License](https://img.shields.io/pypi/l/napari-serialcellpose.svg?color=green)](https://github.com/guiwitz/napari-serialcellpose/raw/main/LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/napari-serialcellpose.svg?color=green)](https://pypi.org/project/napari-serialcellpose)
+[![Python Version](https://img.shields.io/pypi/pyversions/napari-serialcellpose.svg?color=green)](https://python.org)
+[![tests](https://github.com/guiwitz/napari-serialcellpose/workflows/tests/badge.svg)](https://github.com/guiwitz/napari-serialcellpose/actions)
+[![codecov](https://codecov.io/gh/guiwitz/napari-serialcellpose/branch/main/graph/badge.svg)](https://codecov.io/gh/guiwitz/napari-serialcellpose)
+[![napari hub](https://img.shields.io/endpoint?url=https://api.napari-hub.org/shields/napari-serialcellpose)](https://napari-hub.org/plugins/napari-serialcellpose)
 
 A simple plugin to batch segment cells with cellpose
 
@@ -23,15 +23,15 @@ https://napari.org/plugins/stable/index.html
 
 ## Installation
 
-You can install `napari-serialcell` via [pip]:
+You can install `napari-serialcellpose` via [pip]:
 
-    pip install napari-serialcell
+    pip install napari-serialcellpose
 
 
 
 To install latest development version :
 
-    pip install git+https://github.com/guiwitz/napari-serialcell.git
+    pip install git+https://github.com/guiwitz/napari-serialcellpose.git
 
 
 ## Contributing
@@ -42,7 +42,7 @@ the coverage at least stays the same before you submit a pull request.
 ## License
 
 Distributed under the terms of the [BSD-3] license,
-"napari-serialcell" is free and open source software
+"napari-serialcellpose" is free and open source software
 
 ## Issues
 
@@ -59,7 +59,7 @@ If you encounter any problems, please [file an issue] along with a detailed desc
 [Mozilla Public License 2.0]: https://www.mozilla.org/media/MPL/2.0/index.txt
 [cookiecutter-napari-plugin]: https://github.com/napari/cookiecutter-napari-plugin
 
-[file an issue]: https://github.com/guiwitz/napari-serialcell/issues
+[file an issue]: https://github.com/guiwitz/napari-serialcellpose/issues
 
 [napari]: https://github.com/napari/napari
 [tox]: https://tox.readthedocs.io/en/latest/

@@ -1,28 +1,17 @@
-name: napari-serialcell
-display_name: SerialCell
+name: napari-serialcellpose
+display_name: serialcellpose
 contributions:
   commands:
-    - id: napari-serialcell.get_reader
-      python_name: napari_serialcell._reader:napari_get_reader
-      title: Open data with SerialCell 
-    - id: napari-serialcell.make_qwidget
-      python_name: napari_serialcell._widget:ExampleQWidget
+    - id: napari-serialcellpose.get_reader
+      python_name: napari_serialcellpose._reader:napari_get_reader
+      title: Open data with serialcellpose 
+    - id: napari-serialcellpose.make_qwidget
+      python_name: napari_serialcellpose.serial_widget:SerialWidget
       title: Make example QWidget
-    - id: napari-serialcell.make_magic_widget
-      python_name: napari_serialcell._widget:example_magic_widget
-      title: Make example magic widget
-    - id: napari-serialcell.make_func_widget
-      python_name: napari_serialcell._widget:example_function_widget
-      title: Make example function widget 
   readers:
-    - command: napari-serialcell.get_reader
+    - command: napari-serialcellpose.get_reader
       accepts_directories: false
       filename_patterns: ['*.npy']  
   widgets:
-    - command: napari-serialcell.make_qwidget
-      display_name: Example QWidget
-    - command: napari-serialcell.make_magic_widget
-      display_name: Example Magic Widget
-    - command: napari-serialcell.make_func_widget
-      autogenerate: true
-      display_name: Example Function Widget 
+    - command: napari-serialcellpose.make_qwidget
+      display_name: Serial Widget
