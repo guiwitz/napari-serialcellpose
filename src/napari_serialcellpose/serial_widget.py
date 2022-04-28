@@ -1,5 +1,6 @@
 from qtpy.QtWidgets import (QWidget, QVBoxLayout,QFileDialog, QPushButton,
-QSpinBox, QLabel, QGridLayout, QHBoxLayout, QGroupBox, QComboBox, QTabWidget)
+QSpinBox, QLabel, QGridLayout, QHBoxLayout, QGroupBox, QComboBox, QTabWidget,
+QCheckBox)
 from .folder_list_widget import FolderList
 from .serial_analysis import run_cellpose, load_props, load_allprops
 
@@ -82,6 +83,9 @@ class SerialWidget(QWidget):
 
         self.btn_run_on_folder = QPushButton("Run on folder")
         self.run_group.glayout.addWidget(self.btn_run_on_folder)
+
+        self.check_usegpu = QCheckBox('Use GPU')
+        self.run_group.glayout.addWidget(self.check_usegpu)
 
         self.options_group = VHGroup('Options', orientation='G')
         self._segmentation_layout.addWidget(self.options_group.gbox)
@@ -184,20 +188,11 @@ class SerialWidget(QWidget):
         """Run cellpose on current image"""
 
         model_type = self.qcbox_model_choice.currentText()
-
-        if self.output_folder is None:
-            self._on_click_select_output_folder()
-        if (self.cellpose_model_path is None) and (model_type == 'custom'):
-            self._on_click_select_cellpose_model()
+        self.output_and_model_check()
 
         image_path = self.file_list.folder_path.joinpath(self.file_list.currentItem().text())
         
-        diameter = None
-        if self.qcbox_model_choice.currentText() == 'custom':
-            self.cellpose_model = models.CellposeModel(pretrained_model=self.cellpose_model_path)
-        else:
-            self.cellpose_model = models.Cellpose(model_type=model_type)
-            diameter = self.spinbox_diameter.value()
+        self.cellpose_model, diameter = self.get_cellpose_model(model_type=model_type)
         
         # run cellpose
         segmented = run_cellpose(
@@ -214,10 +209,8 @@ class SerialWidget(QWidget):
     def _on_click_run_on_folder(self):
         """Run cellpose on all images in folder"""
 
-        if self.output_folder is None:
-            self._on_click_select_output_folder()
-        if self.cellpose_model_path is None:
-            self._on_click_select_cellpose_model()
+        model_type = self.qcbox_model_choice.currentText()
+        self.output_and_model_check()
         
         file_list = [self.file_list.item(x).text() for x in range(self.file_list.count())]
         file_list = [f for f in file_list if f[0] != '.']
@@ -226,15 +219,40 @@ class SerialWidget(QWidget):
         n = self.spinbox_batch_size.value()
         file_list_partition = [file_list[i:i + n] for i in range(0, len(file_list), n)]
 
-        self.cellpose_model = models.CellposeModel(pretrained_model=self.cellpose_model_path)
+        self.cellpose_model, diameter = self.get_cellpose_model(model_type=model_type)
 
         for batch in file_list_partition:
             run_cellpose(
                 image_path=batch,
                 cellpose_model=self.cellpose_model,
                 output_path=self.output_folder,
-                scaling_factor=1.0,
+                scaling_factor=self.spinbox_rescaling.value(),
+                diameter=diameter
             )
+
+    def output_and_model_check(self):
+        """Check if output folder and model are set"""
+
+        model_type = self.qcbox_model_choice.currentText()
+        if self.output_folder is None:
+            self._on_click_select_output_folder()
+        if (self.cellpose_model_path is None) and (model_type == 'custom'):
+            self._on_click_select_cellpose_model()
+
+    def get_cellpose_model(self, model_type):
+
+        diameter = None
+        if self.qcbox_model_choice.currentText() == 'custom':
+            cellpose_model = models.CellposeModel(
+                gpu=self.check_usegpu.isChecked(),
+                pretrained_model=self.cellpose_model_path)
+        else:
+            cellpose_model = models.Cellpose(
+                gpu=self.check_usegpu.isChecked(),
+                model_type=model_type)
+            diameter = self.spinbox_diameter.value()
+        
+        return cellpose_model, diameter
 
     def _on_click_load_summary(self):
         """Load summary from folder"""
