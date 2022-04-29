@@ -1,6 +1,9 @@
 from qtpy.QtWidgets import (QWidget, QVBoxLayout,QFileDialog, QPushButton,
 QSpinBox, QLabel, QGridLayout, QHBoxLayout, QGroupBox, QComboBox, QTabWidget,
-QCheckBox)
+QCheckBox, QSlider)
+from qtpy.QtCore import Qt
+import magicgui.widgets
+
 from .folder_list_widget import FolderList
 from .serial_analysis import run_cellpose, load_props, load_allprops
 
@@ -29,6 +32,7 @@ class SerialWidget(QWidget):
         self.cellpose_model = None
         self.output_folder = None
         self.props_table = None
+        self.allprops = None
 
         self.main_layout = QVBoxLayout()
         self.setLayout(self.main_layout)
@@ -110,17 +114,27 @@ class SerialWidget(QWidget):
         self.plot_group = VHGroup('Plots')
         self._properties_layout.addWidget(self.plot_group.gbox)
 
-        self.sc = MplCanvas(self, row=1, col=2, width=5, height=4, dpi=100)
+        self.sc = MplCanvas(self, row=1, col=2, width=6, height=4, dpi=100)
         self.toolbar = NavigationToolbar(self.sc, self)
         self.plot_group.glayout.addWidget(self.toolbar)
         self.plot_group.glayout.addWidget(self.sc)
 
-        self.sc_sum = MplCanvas(self, row=1, col=2, width=5, height=4, dpi=100)
+        self.sc_sum = MplCanvas(self, row=1, col=2, width=6, height=4, dpi=100)
         self.toolbar_sum = NavigationToolbar(self.sc_sum, self)
         self._summary_layout.addWidget(self.toolbar_sum)
         self._summary_layout.addWidget(self.sc_sum)
         self.btn_load_summary = QPushButton("Load summary")
         self._summary_layout.addWidget(self.btn_load_summary)
+
+        '''self.eccentricity_slider = QSlider(Qt.Horizontal)
+        self.eccentricity_slider.setMinimum(0)
+        self.eccentricity_slider.setMaximum(1)
+        self.eccentricity_slider.setValue(1)
+        self.eccentricity_slider.setSingleStep(0.01)
+        self._summary_layout.addWidget(self.eccentricity_slider)'''
+
+        self.eccentricity_slider = magicgui.widgets.FloatSlider(min=0, max=1, step=0.01, value=1)
+        self._summary_layout.addWidget(self.eccentricity_slider.native)
 
         self.add_connections()
         
@@ -136,12 +150,13 @@ class SerialWidget(QWidget):
         self.btn_run_on_folder.clicked.connect(self._on_click_run_on_folder)
         self.qcbox_model_choice.currentTextChanged.connect(self._on_change_modeltype)
         self.btn_load_summary.clicked.connect(self._on_click_load_summary)
+        self.eccentricity_slider.changed.connect(self.update_eccentricity)
+
 
     def open_file(self):
         """Open file selected in list. Returns True if file was opened."""
         
         # clear existing layers.
-        #self.clear_layers()
         self.viewer.layers.clear()
 
         # if file list is empty stop here
@@ -258,14 +273,15 @@ class SerialWidget(QWidget):
     def _on_click_load_summary(self):
         """Load summary from folder"""
 
-        props = load_allprops(self.output_folder)
+        self.allprops = load_allprops(self.output_folder)
+        props = self.allprops[self.allprops.eccentricity < self.eccentricity_slider.value]
         prop_names = ['eccentricity', 'feret_diameter_max']
         for i in range(len(prop_names)):
             self.sc_sum.ax[0,i].clear()
             self.sc_sum.ax[0,i].hist(props[prop_names[i]], rwidth=0.85)
             self.sc_sum.ax[0,i].figure.canvas.draw()
-            self.sc_sum.ax[0,i].tick_params(colors='white',labelsize=12)
-            self.sc_sum.ax[0,i].set_title(prop_names[i], fontsize=15, color='white')
+            self.sc_sum.ax[0,i].tick_params(colors='black',labelsize=12)
+            self.sc_sum.ax[0,i].set_title(prop_names[i], fontsize=15, color='black')
 
 
     def _on_change_modeltype(self):
@@ -298,8 +314,24 @@ class SerialWidget(QWidget):
             self.sc.ax[0,i].clear()
             self.sc.ax[0,i].hist(props[prop_names[i]], rwidth=0.85)
             self.sc.ax[0,i].figure.canvas.draw()
-            self.sc.ax[0,i].tick_params(colors='white',labelsize=12)
-            self.sc.ax[0,i].set_title(prop_names[i], fontsize=15, color='white')
+            self.sc.ax[0,i].tick_params(colors='black',labelsize=12)
+            self.sc.ax[0,i].set_title(prop_names[i], fontsize=15, color='black')
+
+    def update_eccentricity(self, vakue):
+        """Update eccentricity plot"""
+
+        #print(f'value: {vakue}')
+        if self.allprops is None:
+            self._on_click_load_summary()
+        else:
+            props = self.allprops[self.allprops.eccentricity < self.eccentricity_slider.value]
+            prop_names = ['eccentricity', 'feret_diameter_max']
+            for i in range(len(prop_names)):
+                self.sc_sum.ax[0,i].clear()
+                self.sc_sum.ax[0,i].hist(props[prop_names[i]], rwidth=0.85)
+                self.sc_sum.ax[0,i].figure.canvas.draw()
+                self.sc_sum.ax[0,i].tick_params(colors='black',labelsize=12)
+                self.sc_sum.ax[0,i].set_title(prop_names[i], fontsize=15, color='black')
 
 
 class VHGroup():
@@ -327,11 +359,9 @@ class VHGroup():
 
 class MplCanvas(FigureCanvasQTAgg):
 
-    def __init__(self, parent=None, col=1, row=1, width=5, height=4, dpi=100):
+    def __init__(self, parent=None, col=1, row=1, width=6, height=4, dpi=100):
         self.ax=np.array([[None]*col]*row)
-        fig = Figure(figsize=(width, height), dpi=dpi)
-        #self.axes = fig.add_subplot(111)
-        #fig, self.ax = plt.subplots(1, 3, figsize=(width, height), dpi=dpi)
+        fig = Figure(figsize=(width, height), dpi=dpi, facecolor='white')
         count = 1
         for i in range(row):
             for j in range(col):
