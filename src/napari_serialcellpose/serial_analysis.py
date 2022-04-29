@@ -6,7 +6,27 @@ import pandas as pd
 
 def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
                  diameter=None, clear_border=True):
-    """Run cellpose on image"""
+    """Run cellpose on image.
+    
+    Parameters
+    ----------
+    image_path : str or Path
+        path to image
+    cellpose_model : cellpose model instance
+    output_path : str or Path
+        path to output folder
+    scaling_factor : int
+        scaling factor for image (not implemented)
+    diameter : int
+        diameter of cells to segment, only useful for native cellpose models
+    clear_border : bool
+        remove cells touching border
+
+    Returns
+    -------
+    cellpose_output : list of arrays
+        list of segmented images
+    """
 
 
     if not isinstance(image_path, list):
@@ -47,7 +67,18 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
 
 
 def compute_props(label_image, output_path, image_name):
-    """Compute cell properties"""
+    """Compute properties of segmented image.
+    
+    Parameters
+    ----------
+    label_image : array
+        image with labeled cells
+    output_path : str or Path
+        path to output folder
+    image_name : str or Path
+        either path to image or image name
+
+    """
     
     image_name = Path(image_name)
     output_path = Path(output_path).joinpath('tables')
@@ -66,7 +97,20 @@ def compute_props(label_image, output_path, image_name):
 
 
 def load_props(output_path, image_name):
-    """Load properties from file"""
+    """Load properties for an analyzed image.
+    
+    Parameters
+    ----------
+    output_path : str or Path
+        path to output folder
+    image_name : str or Path
+        either path to image or image name
+    
+    Returns
+    -------
+    props : pandas dataframe
+        properties of segmented cells
+    """
 
     # get file name
     image_name = Path(image_name)
@@ -80,7 +124,19 @@ def load_props(output_path, image_name):
     return props
 
 def load_allprops(output_path):
-    """Load properties from file"""
+    """Load all properties files for a given folder.
+    
+    Parameters
+    ----------
+    output_path : str or Path
+        path to output folder
+
+    Returns
+    -------
+    all_props : pandas dataframe
+        properties of segmented cells in all images
+    
+    """
 
     # get file name
     output_path = Path(output_path).joinpath('tables')

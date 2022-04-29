@@ -126,13 +126,6 @@ class SerialWidget(QWidget):
         self.btn_load_summary = QPushButton("Load summary")
         self._summary_layout.addWidget(self.btn_load_summary)
 
-        '''self.eccentricity_slider = QSlider(Qt.Horizontal)
-        self.eccentricity_slider.setMinimum(0)
-        self.eccentricity_slider.setMaximum(1)
-        self.eccentricity_slider.setValue(1)
-        self.eccentricity_slider.setSingleStep(0.01)
-        self._summary_layout.addWidget(self.eccentricity_slider)'''
-
         self.eccentricity_slider = magicgui.widgets.FloatSlider(min=0, max=1, step=0.01, value=1)
         self._summary_layout.addWidget(self.eccentricity_slider.native)
 
@@ -256,6 +249,9 @@ class SerialWidget(QWidget):
             self._on_click_select_cellpose_model()
 
     def get_cellpose_model(self, model_type):
+        """Get cellpose model. For non-custom model provide a model name
+        in model_type. For custom models the returned diameter is None, otherwise
+        it is the GUI value."""
 
         diameter = None
         if self.qcbox_model_choice.currentText() == 'custom':
@@ -335,7 +331,8 @@ class SerialWidget(QWidget):
 
 
 class VHGroup():
-    """Group box with specific layout
+    """Group box with specific layout.
+
     Parameters
     ----------
     name: str
@@ -358,6 +355,21 @@ class VHGroup():
         self.gbox.setLayout(self.glayout)
 
 class MplCanvas(FigureCanvasQTAgg):
+    """Matplotlib QT canvas for grid of plots.
+    
+    Parameters
+    ----------
+    col: int
+        number of columns
+    row: int
+        number of rows
+    width: int
+        width of the canvas
+    height: int
+        height of the canvas
+    dpi: int
+        dpi of the canvas
+    """
 
     def __init__(self, parent=None, col=1, row=1, width=6, height=4, dpi=100):
         self.ax=np.array([[None]*col]*row)
