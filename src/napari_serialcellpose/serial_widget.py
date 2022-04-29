@@ -104,6 +104,7 @@ class SerialWidget(QWidget):
         self.options_group.glayout.addWidget(self.diameter_label, 2, 0, 1, 1)
         self.spinbox_diameter = QSpinBox(visible=False)
         self.spinbox_diameter.setValue(30)
+        self.spinbox_diameter.setMaximum(1000)
         self.options_group.glayout.addWidget(self.spinbox_diameter, 2, 1, 1, 1)
 
         self.plot_group = VHGroup('Plots')
