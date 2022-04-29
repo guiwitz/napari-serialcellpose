@@ -24,7 +24,7 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
     output_path = Path(output_path)
     
     # run cellpose
-    cellpose_output = cellpose_model.eval(image, channels = [[0,0]])
+    cellpose_output = cellpose_model.eval(image, channels = [[0,0]], diameter=diameter)
     cellpose_output = cellpose_output[0]
 
     if clear_border is True:
