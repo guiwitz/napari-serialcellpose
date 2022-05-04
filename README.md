@@ -13,9 +13,13 @@ This plugin uses the great [napari-skimage-regionprops](https://github.com/haesl
 
 ## Installation
 
-In order to let users choose whether they want to use the GPU or not for segmentation, cellpose is not added as a dependency of this package. Therefore, to use this plugin you need to create an environment and install a few packages manually. First create the environment and install napari and the plugin:
+In order to let users choose whether they want to use the GPU or not for segmentation, cellpose is not added as a dependency of this package. Therefore, to use this plugin you need to create an environment and install a few packages manually. First create the environment:
 
     conda create -n serialcellpose python=3.8.5
+
+Then activate it and install napari and the plugin:
+    
+    conda activate serialcellpose
     pip install "napari[all]"
     pip install git+https://github.com/guiwitz/napari-serialcellpose.git
 
@@ -36,6 +40,13 @@ Finally you can install cellpose:
     pip install cellpose
 
 **Note that it is important to install pytorch before cellpose, otherwise cellpose will install non-GPU dependencies.**
+
+### Plugin Updates
+
+To update the plugin, you only need to activate the existing environment and install the new version:
+
+    conda activate serialcellpose
+    pip install git+https://github.com/guiwitz/napari-serialcellpose.git -U
 
 ## Usage: segmentation
 
