@@ -48,24 +48,24 @@ The main interface is shown below. The sequence of events should be the followin
 6. Select if you want to use a GPU or not.
 7. Run the analysis on the currently selected image or on all files in the folder.
 
+<img src="https://github.com/guiwitz/napari-serialcellpose/raw/main/illustrations/napari_serialcellpose_gui1.png" alt="image" width="300">
+
 The results of the analysis are saved in the folder chosen in #2. The segmentation mask is saved with the same name as the original image with the suffix ```_mask.tif```. A table with properties is saved in the subfolder ```tables``` also with the same name as the image with the suffix ```props.csv```.
 ## Usage: post-processing
 
 After the analysis is done, when you select an image, the corresponding segmentation mask is shown on top of the image as shown below. This also works for saved segmentations: in that case you just select a folder with data and the corresponding output folder.
 
-<img src="https://github.com/guiwitz/microfilm/raw/main/illustrations/napari_serialcellpose_gui1.png" alt="image" width="300">
+<img src="https://github.com/guiwitz/napari-serialcellpose/raw/main/illustrations/napari_serialcellpose_gui2.png" alt="image" width="300">
 
 If you head to the **Properties** tab, you will find there two histograms showing the distribution of eccentricity and maximum Feret diameter. Below you find the table containing information for each cell (each line is a cell).
 
-<img src="https://github.com/guiwitz/microfilm/raw/main/illustrations/napari_serialcellpose_gui2.png" alt="image" width="300">
-
 As shown below, if you select the box ```show selected```, you can select items in the properties table and it will highlight the corresponding cell in the viewer. If you select the pipet tool, you can also select a cell and see the corresponding line in the table highlighted.
 
-<img src="https://github.com/guiwitz/microfilm/raw/main/illustrations/napari_serialcellpose_gui3.png" alt="image" width="300">
+<img src="https://github.com/guiwitz/napari-serialcellpose/raw/main/illustrations/napari_serialcellpose_gui3.png" alt="image" width="300">
 
 Finally if you select the **Summary** tab, and click on ```Load summary```, it will load all data of the given folder and create histograms of eccentricity and Feret diameter. The slider allows to put a threshold on eccentricity in order to select only round cells.
 
-<img src="https://github.com/guiwitz/microfilm/raw/main/illustrations/napari_serialcellpose_gui4.png" alt="image" width="300">
+<img src="https://github.com/guiwitz/napari-serialcellpose/raw/main/illustrations/napari_serialcellpose_gui4.png" alt="image" width="300">
 
 ## License
 
