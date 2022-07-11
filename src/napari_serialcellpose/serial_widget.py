@@ -111,6 +111,10 @@ class SerialWidget(QWidget):
         self.spinbox_diameter.setMaximum(1000)
         self.options_group.glayout.addWidget(self.spinbox_diameter, 2, 1, 1, 1)
 
+        self.check_clear_border = QCheckBox('Clear labels on border')
+        self.check_clear_border.setChecked(True)
+        self.options_group.glayout.addWidget(self.check_clear_border)
+
         self.plot_group = VHGroup('Plots')
         self._properties_layout.addWidget(self.plot_group.gbox)
 
@@ -209,7 +213,8 @@ class SerialWidget(QWidget):
             cellpose_model=self.cellpose_model,
             output_path=self.output_folder,
             scaling_factor=self.spinbox_rescaling.value(),
-            diameter=diameter
+            diameter=diameter,
+            clear_border=self.check_clear_border.isChecked()
         )
         self.viewer.add_labels(segmented, name='mask')
         props = load_props(self.output_folder, image_path)
@@ -236,7 +241,8 @@ class SerialWidget(QWidget):
                 cellpose_model=self.cellpose_model,
                 output_path=self.output_folder,
                 scaling_factor=self.spinbox_rescaling.value(),
-                diameter=diameter
+                diameter=diameter,
+                clear_border=self.check_clear_border.isChecked()
             )
 
     def output_and_model_check(self):
