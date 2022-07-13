@@ -1,5 +1,5 @@
 from qtpy.QtWidgets import (QWidget, QVBoxLayout,QFileDialog, QPushButton,
-QSpinBox, QLabel, QGridLayout, QHBoxLayout, QGroupBox, QComboBox, QTabWidget,
+QSpinBox, QDoubleSpinBox, QLabel, QGridLayout, QHBoxLayout, QGroupBox, QComboBox, QTabWidget,
 QCheckBox, QSlider)
 from qtpy.QtCore import Qt
 import magicgui.widgets
@@ -111,9 +111,23 @@ class SerialWidget(QWidget):
         self.spinbox_diameter.setMaximum(1000)
         self.options_group.glayout.addWidget(self.spinbox_diameter, 2, 1, 1, 1)
 
+        self.flow_threshold_label = QLabel("Flow threshold")
+        self.options_group.glayout.addWidget(self.flow_threshold_label, 3, 0, 1, 1)
+        self.flow_threshold = QDoubleSpinBox()
+        self.flow_threshold.setSingleStep(0.1)
+        self.flow_threshold.setValue(0.4)
+        self.options_group.glayout.addWidget(self.flow_threshold, 3, 1, 1, 1)
+
+        self.cellprob_threshold_label = QLabel("Cell probability threshold")
+        self.options_group.glayout.addWidget(self.cellprob_threshold_label, 4, 0, 1, 1)
+        self.cellprob_threshold = QDoubleSpinBox()
+        self.cellprob_threshold.setSingleStep(0.1)
+        self.cellprob_threshold.setValue(0.0)
+        self.options_group.glayout.addWidget(self.cellprob_threshold, 4, 1, 1, 1)
+
         self.check_clear_border = QCheckBox('Clear labels on border')
         self.check_clear_border.setChecked(True)
-        self.options_group.glayout.addWidget(self.check_clear_border)
+        self.options_group.glayout.addWidget(self.check_clear_border)   
 
         self.plot_group = VHGroup('Plots')
         self._properties_layout.addWidget(self.plot_group.gbox)
@@ -214,6 +228,8 @@ class SerialWidget(QWidget):
             output_path=self.output_folder,
             scaling_factor=self.spinbox_rescaling.value(),
             diameter=diameter,
+            flow_threshold=self.flow_threshold.value(),
+            cellprob_threshold=self.cellprob_threshold.value(),
             clear_border=self.check_clear_border.isChecked()
         )
         self.viewer.add_labels(segmented, name='mask')
@@ -242,6 +258,8 @@ class SerialWidget(QWidget):
                 output_path=self.output_folder,
                 scaling_factor=self.spinbox_rescaling.value(),
                 diameter=diameter,
+                flow_threshold=self.flow_threshold.value(),
+                cellprob_threshold=self.cellprob_threshold.value(),
                 clear_border=self.check_clear_border.isChecked()
             )
 

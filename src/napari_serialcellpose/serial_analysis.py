@@ -5,7 +5,7 @@ from skimage.measure import regionprops_table
 import pandas as pd
 
 def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
-                 diameter=None, clear_border=True):
+                 diameter=None, flow_threshold=0.4, cellprob_threshold=0.0, clear_border=True):
     """Run cellpose on image.
     
     Parameters
@@ -44,7 +44,7 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
     output_path = Path(output_path)
     
     # run cellpose
-    cellpose_output = cellpose_model.eval(image, channels = [[0,0]], diameter=diameter)
+    cellpose_output = cellpose_model.eval(image, channels = [[0,0]], diameter=diameter, flow_threshold=flow_threshold, cellprob_threshold=cellprob_threshold)
     cellpose_output = cellpose_output[0]
 
     if clear_border is True:
