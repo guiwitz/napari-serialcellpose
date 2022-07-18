@@ -99,10 +99,11 @@ class SerialWidget(QWidget):
         self.spinbox_batch_size.setValue(3)
         self.options_group.glayout.addWidget(self.spinbox_batch_size, 0, 1, 1, 1)
 
-        self.options_group.glayout.addWidget(QLabel("Rescaling factor"), 1, 0, 1, 1)
-        self.spinbox_rescaling = QSpinBox()
-        self.spinbox_rescaling.setValue(1)
-        self.options_group.glayout.addWidget(self.spinbox_rescaling, 1, 1, 1, 1)
+        # Not yet implemented
+        # self.options_group.glayout.addWidget(QLabel("Rescaling factor"), 1, 0, 1, 1)
+        # self.spinbox_rescaling = QSpinBox()
+        # self.spinbox_rescaling.setValue(1)
+        # self.options_group.glayout.addWidget(self.spinbox_rescaling, 1, 1, 1, 1)
 
         self.diameter_label = QLabel("Diameter", visible=False)
         self.options_group.glayout.addWidget(self.diameter_label, 2, 0, 1, 1)
