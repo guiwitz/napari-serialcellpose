@@ -1,5 +1,5 @@
 from qtpy.QtWidgets import (QWidget, QVBoxLayout,QFileDialog, QPushButton,
-QSpinBox, QLabel, QGridLayout, QHBoxLayout, QGroupBox, QComboBox, QTabWidget,
+QSpinBox, QDoubleSpinBox, QLabel, QGridLayout, QHBoxLayout, QGroupBox, QComboBox, QTabWidget,
 QCheckBox, QSlider)
 from qtpy.QtCore import Qt
 import magicgui.widgets
@@ -99,10 +99,11 @@ class SerialWidget(QWidget):
         self.spinbox_batch_size.setValue(3)
         self.options_group.glayout.addWidget(self.spinbox_batch_size, 0, 1, 1, 1)
 
-        self.options_group.glayout.addWidget(QLabel("Rescaling factor"), 1, 0, 1, 1)
-        self.spinbox_rescaling = QSpinBox()
-        self.spinbox_rescaling.setValue(1)
-        self.options_group.glayout.addWidget(self.spinbox_rescaling, 1, 1, 1, 1)
+        # Not yet implemented
+        # self.options_group.glayout.addWidget(QLabel("Rescaling factor"), 1, 0, 1, 1)
+        # self.spinbox_rescaling = QSpinBox()
+        # self.spinbox_rescaling.setValue(1)
+        # self.options_group.glayout.addWidget(self.spinbox_rescaling, 1, 1, 1, 1)
 
         self.diameter_label = QLabel("Diameter", visible=False)
         self.options_group.glayout.addWidget(self.diameter_label, 2, 0, 1, 1)
@@ -110,6 +111,24 @@ class SerialWidget(QWidget):
         self.spinbox_diameter.setValue(30)
         self.spinbox_diameter.setMaximum(1000)
         self.options_group.glayout.addWidget(self.spinbox_diameter, 2, 1, 1, 1)
+
+        self.flow_threshold_label = QLabel("Flow threshold")
+        self.options_group.glayout.addWidget(self.flow_threshold_label, 3, 0, 1, 1)
+        self.flow_threshold = QDoubleSpinBox()
+        self.flow_threshold.setSingleStep(0.1)
+        self.flow_threshold.setValue(0.4)
+        self.options_group.glayout.addWidget(self.flow_threshold, 3, 1, 1, 1)
+
+        self.cellprob_threshold_label = QLabel("Cell probability threshold")
+        self.options_group.glayout.addWidget(self.cellprob_threshold_label, 4, 0, 1, 1)
+        self.cellprob_threshold = QDoubleSpinBox()
+        self.cellprob_threshold.setSingleStep(0.1)
+        self.cellprob_threshold.setValue(0.0)
+        self.options_group.glayout.addWidget(self.cellprob_threshold, 4, 1, 1, 1)
+
+        self.check_clear_border = QCheckBox('Clear labels on border')
+        self.check_clear_border.setChecked(True)
+        self.options_group.glayout.addWidget(self.check_clear_border)   
 
         self.plot_group = VHGroup('Plots')
         self._properties_layout.addWidget(self.plot_group.gbox)
@@ -208,8 +227,11 @@ class SerialWidget(QWidget):
             image_path=image_path,
             cellpose_model=self.cellpose_model,
             output_path=self.output_folder,
-            scaling_factor=self.spinbox_rescaling.value(),
-            diameter=diameter
+            # scaling_factor=self.spinbox_rescaling.value(), # not implemented yet
+            diameter=diameter,
+            flow_threshold=self.flow_threshold.value(),
+            cellprob_threshold=self.cellprob_threshold.value(),
+            clear_border=self.check_clear_border.isChecked()
         )
         self.viewer.add_labels(segmented, name='mask')
         props = load_props(self.output_folder, image_path)
@@ -235,8 +257,11 @@ class SerialWidget(QWidget):
                 image_path=batch,
                 cellpose_model=self.cellpose_model,
                 output_path=self.output_folder,
-                scaling_factor=self.spinbox_rescaling.value(),
-                diameter=diameter
+                # scaling_factor=self.spinbox_rescaling.value(), # not implemented yet
+                diameter=diameter,
+                flow_threshold=self.flow_threshold.value(),
+                cellprob_threshold=self.cellprob_threshold.value(),
+                clear_border=self.check_clear_border.isChecked()
             )
 
     def output_and_model_check(self):
