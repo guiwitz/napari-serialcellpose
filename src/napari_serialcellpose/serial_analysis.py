@@ -19,6 +19,10 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
         scaling factor for image (not implemented)
     diameter : int
         diameter of cells to segment, only useful for native cellpose models
+    flow_threshold : float
+        cellpose setting: maximum allowed error of the flows for each mask
+    cellprob_threshold : float
+        cellpose setting: pixels greater than the cellprob_threshold are used to run dynamics and determine ROIs
     clear_border : bool
         remove cells touching border
 
