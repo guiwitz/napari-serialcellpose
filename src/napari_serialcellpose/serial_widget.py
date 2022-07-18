@@ -227,7 +227,7 @@ class SerialWidget(QWidget):
             image_path=image_path,
             cellpose_model=self.cellpose_model,
             output_path=self.output_folder,
-            scaling_factor=self.spinbox_rescaling.value(),
+            # scaling_factor=self.spinbox_rescaling.value(), # not implemented yet
             diameter=diameter,
             flow_threshold=self.flow_threshold.value(),
             cellprob_threshold=self.cellprob_threshold.value(),
@@ -257,7 +257,7 @@ class SerialWidget(QWidget):
                 image_path=batch,
                 cellpose_model=self.cellpose_model,
                 output_path=self.output_folder,
-                scaling_factor=self.spinbox_rescaling.value(),
+                # scaling_factor=self.spinbox_rescaling.value(), # not implemented yet
                 diameter=diameter,
                 flow_threshold=self.flow_threshold.value(),
                 cellprob_threshold=self.cellprob_threshold.value(),
