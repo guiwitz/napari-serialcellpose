@@ -149,7 +149,6 @@ class SerialWidget(QWidget):
         self._summary_layout.addWidget(self.eccentricity_slider.native)
 
         self.add_connections()
-        
 
     def add_connections(self):
         """Add callbacks"""
@@ -164,20 +163,20 @@ class SerialWidget(QWidget):
         self.btn_load_summary.clicked.connect(self._on_click_load_summary)
         self.eccentricity_slider.changed.connect(self.update_eccentricity)
 
-
     def open_file(self):
         """Open file selected in list. Returns True if file was opened."""
-        
+
         # clear existing layers.
         self.viewer.layers.clear()
-
+        
         # if file list is empty stop here
         if self.file_list.currentItem() is None:
             return False
         
         # open image
         image_name = self.file_list.currentItem().text()
-        image_path = self.file_folder.joinpath(image_name)
+        image_path = self.file_list.folder_path.joinpath(image_name)
+
         self.viewer.open(image_path)
 
         if self.output_folder is not None:
@@ -193,8 +192,8 @@ class SerialWidget(QWidget):
     def _on_click_select_file_folder(self):
         """Interactively select folder to analyze"""
 
-        self.file_folder = Path(str(QFileDialog.getExistingDirectory(self, "Select Directory")))
-        self.file_list.update_from_path(self.file_folder)
+        file_folder = Path(str(QFileDialog.getExistingDirectory(self, "Select Directory")))
+        self.file_list.update_from_path(file_folder)
 
     def _on_click_select_output_folder (self):
         """Interactively select folder where to save results"""
@@ -206,17 +205,17 @@ class SerialWidget(QWidget):
 
         self.cellpose_model_path = QFileDialog.getOpenFileName(self, "Select model file")[0]
     
-        
     def _on_select_file(self, current_item, previous_item):
+        
         success = self.open_file()
         if not success:
-            return
+            return False
 
     def _on_click_run_on_current(self):
         """Run cellpose on current image"""
 
         model_type = self.qcbox_model_choice.currentText()
-        self.output_and_model_check()
+        self.output_and_model_check(choose_output=False)
 
         image_path = self.file_list.folder_path.joinpath(self.file_list.currentItem().text())
         
@@ -234,8 +233,9 @@ class SerialWidget(QWidget):
             clear_border=self.check_clear_border.isChecked()
         )
         self.viewer.add_labels(segmented, name='mask')
-        props = load_props(self.output_folder, image_path)
-        self.add_table_props(props)
+        if self.output_folder is not None:
+            props = load_props(self.output_folder, image_path)
+            self.add_table_props(props)
 
     def _on_click_run_on_folder(self):
         """Run cellpose on all images in folder"""
@@ -245,7 +245,7 @@ class SerialWidget(QWidget):
         
         file_list = [self.file_list.item(x).text() for x in range(self.file_list.count())]
         file_list = [f for f in file_list if f[0] != '.']
-        file_list = [self.file_folder.joinpath(x) for x in file_list]
+        file_list = [self.file_list.folder_path.joinpath(x) for x in file_list]
 
         n = self.spinbox_batch_size.value()
         file_list_partition = [file_list[i:i + n] for i in range(0, len(file_list), n)]
@@ -264,11 +264,11 @@ class SerialWidget(QWidget):
                 clear_border=self.check_clear_border.isChecked()
             )
 
-    def output_and_model_check(self):
+    def output_and_model_check(self, choose_output=True):
         """Check if output folder and model are set"""
 
         model_type = self.qcbox_model_choice.currentText()
-        if self.output_folder is None:
+        if (self.output_folder is None) and (choose_output):
             self._on_click_select_output_folder()
         if (self.cellpose_model_path is None) and (model_type == 'custom'):
             self._on_click_select_cellpose_model()
@@ -303,7 +303,6 @@ class SerialWidget(QWidget):
             self.sc_sum.ax[0,i].figure.canvas.draw()
             self.sc_sum.ax[0,i].tick_params(colors='black',labelsize=12)
             self.sc_sum.ax[0,i].set_title(prop_names[i], fontsize=15, color='black')
-
 
     def _on_change_modeltype(self):
         "if selecting non-custom model, show diameter box"
@@ -341,7 +340,6 @@ class SerialWidget(QWidget):
     def update_eccentricity(self, vakue):
         """Update eccentricity plot"""
 
-        #print(f'value: {vakue}')
         if self.allprops is None:
             self._on_click_load_summary()
         else:
