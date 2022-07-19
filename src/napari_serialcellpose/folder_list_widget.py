@@ -37,7 +37,9 @@ class FolderList(QListWidget):
             for url in event.mimeData().urls():
                 file = str(url.toLocalFile())
                 if not Path(file).is_dir():
-                    raise NotImplementedError("You need to drag and drop a folder")
+                    self.update_from_path(Path(file).parent)
+                    file_list = [self.item(x).text() for x in range(self.count())]
+                    self.setCurrentRow(file_list.index(Path(file).name))
                 else:
                     self.update_from_path(Path(file))
 

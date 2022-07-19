@@ -44,8 +44,6 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
             image[i] = image_gray
         if scaling_factor != 1:
             image[i] = image[i][::scaling_factor, ::scaling_factor]
-
-    output_path = Path(output_path)
     
     # run cellpose
     cellpose_output = cellpose_model.eval(image, channels = [[0,0]], diameter=diameter, flow_threshold=flow_threshold, cellprob_threshold=cellprob_threshold)
@@ -58,14 +56,16 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
     
     # save output
     for im, p in zip(cellpose_output, image_path):
-        save_path = output_path.joinpath(p.stem+'_mask.tif')
-        skimage.io.imsave(save_path, im, check_contrast=False)
+        if output_path is not None:
+            output_path = Path(output_path)
+            save_path = output_path.joinpath(p.stem+'_mask.tif')
+            skimage.io.imsave(save_path, im, check_contrast=False)
 
-        compute_props(
-            label_image=im,
-            output_path=output_path,
-            image_name=p
-            )
+            compute_props(
+                label_image=im,
+                output_path=output_path,
+                image_name=p
+                )
 
     return cellpose_output
 
