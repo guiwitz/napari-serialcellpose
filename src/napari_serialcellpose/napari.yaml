@@ -3,7 +3,7 @@ display_name: serialcellpose
 contributions:
   commands:
     - id: napari-serialcellpose.get_reader
-      python_name: napari_serialcellpose._reader:napari_get_reader
+      python_name: napari_serialcellpose._reader:get_serial_reader
       title: Open data with serialcellpose 
     - id: napari-serialcellpose.make_qwidget
       python_name: napari_serialcellpose.serial_widget:SerialWidget

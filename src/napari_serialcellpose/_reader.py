@@ -6,9 +6,10 @@ implement multiple readers or even other plugin contributions. see:
 https://napari.org/plugins/stable/guides.html#readers
 """
 import numpy as np
+from napari.utils.io import READER_EXTENSIONS
 
 
-def napari_get_reader(path):
+def get_serial_reader(path):
     """A basic implementation of a Reader contribution.
 
     Parameters

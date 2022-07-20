@@ -5,7 +5,7 @@ except ImportError:
     __version__ = "unknown"
 
 
-from ._reader import napari_get_reader
+from ._reader import get_serial_reader
 
 
 from .serial_widget import SerialWidget
