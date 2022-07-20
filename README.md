@@ -78,6 +78,10 @@ Finally if you select the **Summary** tab, and click on ```Load summary```, it w
 
 <img src="https://github.com/guiwitz/napari-serialcellpose/raw/main/illustrations/napari_serialcellpose_gui4.png" alt="image" width="500">
 
+## Data
+
+Sample data were acquired by Fabian Blank at the DBMR, University of Bern.
+
 ## License
 
 Distributed under the terms of the [BSD-3] license,
