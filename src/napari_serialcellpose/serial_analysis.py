@@ -44,6 +44,7 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
     if not isinstance(image_path, list):
         image_path = [image_path]
 
+    channels = [0, 0]
     image = [AICSImage(x) for x in image_path]
     if len(image[0].dims.shape) == 6:
         image = [x.get_image_data('YXS', C=0, T=0, Z=0) for x in image]
@@ -52,7 +53,8 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
         if channel_helper == 0:
             image = [x.get_image_data('CYX', C=[np.max([0,channel_to_segment-1])] , T=0, Z=0) for x in image]
         else:
-            image = [x.get_image_data('CYX', C=[np.max([0,channel_to_segment-1]), np.max(0,channel_helper-1)] , T=0, Z=0) for x in image]
+            image = [x.get_image_data('CYX', C=[np.max([0,channel_to_segment-1]), np.max([0,channel_helper-1])] , T=0, Z=0) for x in image]
+            channels = [0, 1]
         is_rgb = False
 
     for i in range(len(image)):
@@ -64,17 +66,9 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
         if scaling_factor != 1:
             image[i] = image[i][::scaling_factor, ::scaling_factor]
     
-    # run cellpose
-    channels = [channel_to_segment, channel_helper]
-    '''if channel_to_segment > 0:
-        channels[0] = channels[0] + 1
-    if channel_nuclei_helper > 0:
-        channels[1] = channels[1] + 1
-    if image[i].ndim == 3:
-        channels = [[channel_to_segment+1,channel_nuclei_helper+1]]'''
         
     cellpose_output = cellpose_model.eval(
-        image, channels = channels,
+        image, channels=channels,
         diameter=diameter, flow_threshold=flow_threshold,
         cellprob_threshold=cellprob_threshold, channel_axis=0,
     )
