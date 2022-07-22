@@ -1,8 +1,9 @@
 from qtpy.QtWidgets import (QWidget, QVBoxLayout,QFileDialog, QPushButton,
 QSpinBox, QDoubleSpinBox, QLabel, QGridLayout, QHBoxLayout, QGroupBox, QComboBox, QTabWidget,
-QCheckBox, QSlider)
+QCheckBox, QLayout)
 from qtpy.QtCore import Qt
 import magicgui.widgets
+from napari.layers import Image
 
 from .folder_list_widget import FolderList
 from .serial_analysis import run_cellpose, load_props, load_allprops
@@ -46,6 +47,12 @@ class SerialWidget(QWidget):
         self.segmentation.setLayout(self._segmentation_layout)
         self.tabs.addTab(self.segmentation, 'Segmentation')
 
+        # channels tab
+        self.options_tab = QWidget()
+        self._options_tab_layout = QVBoxLayout()
+        self.options_tab.setLayout(self._options_tab_layout)
+        self.tabs.addTab(self.options_tab, 'Options')
+
         # properties tab
         self.properties = QWidget()
         self._properties_layout = QVBoxLayout()
@@ -73,10 +80,11 @@ class SerialWidget(QWidget):
         self.folder_group.glayout.addWidget(self.btn_select_output_folder)
 
         self.qcbox_model_choice = QComboBox(visible=True)
-        self.qcbox_model_choice.addItems(['custom', 'cyto', 'cyto2', 'nuclei'])
+        self.qcbox_model_choice.addItems([
+            'custom', 'cyto', 'cyto2', 'nuclei', 'tissuenet'])
         self.folder_group.glayout.addWidget(self.qcbox_model_choice)
 
-        self.btn_select_cellpose_model = QPushButton("Select cellpose model")
+        self.btn_select_cellpose_model = QPushButton("Select custom cellpose model file")
         self.folder_group.glayout.addWidget(self.btn_select_cellpose_model)
 
         self.run_group = VHGroup('Run analysis')
@@ -91,8 +99,9 @@ class SerialWidget(QWidget):
         self.check_usegpu = QCheckBox('Use GPU')
         self.run_group.glayout.addWidget(self.check_usegpu)
 
+        self._options_tab_layout.setAlignment(Qt.AlignTop)
         self.options_group = VHGroup('Options', orientation='G')
-        self._segmentation_layout.addWidget(self.options_group.gbox)
+        self._options_tab_layout.addWidget(self.options_group.gbox)
 
         self.options_group.glayout.addWidget(QLabel("Batch size"), 0, 0, 1, 1)
         self.spinbox_batch_size = QSpinBox()
@@ -104,13 +113,6 @@ class SerialWidget(QWidget):
         # self.spinbox_rescaling = QSpinBox()
         # self.spinbox_rescaling.setValue(1)
         # self.options_group.glayout.addWidget(self.spinbox_rescaling, 1, 1, 1, 1)
-
-        self.diameter_label = QLabel("Diameter", visible=False)
-        self.options_group.glayout.addWidget(self.diameter_label, 2, 0, 1, 1)
-        self.spinbox_diameter = QSpinBox(visible=False)
-        self.spinbox_diameter.setValue(30)
-        self.spinbox_diameter.setMaximum(1000)
-        self.options_group.glayout.addWidget(self.spinbox_diameter, 2, 1, 1, 1)
 
         self.flow_threshold_label = QLabel("Flow threshold")
         self.options_group.glayout.addWidget(self.flow_threshold_label, 3, 0, 1, 1)
@@ -128,7 +130,23 @@ class SerialWidget(QWidget):
 
         self.check_clear_border = QCheckBox('Clear labels on border')
         self.check_clear_border.setChecked(True)
-        self.options_group.glayout.addWidget(self.check_clear_border)   
+        self.options_group.glayout.addWidget(self.check_clear_border) 
+
+        self.mainoptions_group = VHGroup('Main options', orientation='G')
+        self._segmentation_layout.addWidget(self.mainoptions_group.gbox)
+
+        self.qcbox_channel_to_segment = QComboBox()
+        self.mainoptions_group.glayout.addWidget(QLabel('Channel to segment'), 0, 0, 1, 1)
+        self.mainoptions_group.glayout.addWidget(self.qcbox_channel_to_segment, 0,1,1,1)
+        self.mainoptions_group.glayout.addWidget(QLabel('Helper channel'), 1, 0, 1, 1)
+        self.qcbox_channel_helper = QComboBox()
+        self.mainoptions_group.glayout.addWidget(self.qcbox_channel_helper, 1,1,1,1)
+        self.diameter_label = QLabel("Diameter", visible=False)
+        self.mainoptions_group.glayout.addWidget(self.diameter_label, 2, 0, 1, 1)
+        self.spinbox_diameter = QSpinBox(visible=False)
+        self.spinbox_diameter.setValue(30)
+        self.spinbox_diameter.setMaximum(1000)
+        self.mainoptions_group.glayout.addWidget(self.spinbox_diameter, 2, 1, 1, 1)
 
         self.plot_group = VHGroup('Plots')
         self._properties_layout.addWidget(self.plot_group.gbox)
@@ -162,6 +180,7 @@ class SerialWidget(QWidget):
         self.qcbox_model_choice.currentTextChanged.connect(self._on_change_modeltype)
         self.btn_load_summary.clicked.connect(self._on_click_load_summary)
         self.eccentricity_slider.changed.connect(self.update_eccentricity)
+        self.viewer.layers.events.connect(self._on_change_layers)
 
     def open_file(self):
         """Open file selected in list. Returns True if file was opened."""
@@ -221,16 +240,19 @@ class SerialWidget(QWidget):
         
         self.cellpose_model, diameter = self.get_cellpose_model(model_type=model_type)
         
+        channel_to_segment, channel_helper = self.get_channels_to_use()
+
         # run cellpose
         segmented = run_cellpose(
             image_path=image_path,
             cellpose_model=self.cellpose_model,
             output_path=self.output_folder,
-            # scaling_factor=self.spinbox_rescaling.value(), # not implemented yet
             diameter=diameter,
             flow_threshold=self.flow_threshold.value(),
             cellprob_threshold=self.cellprob_threshold.value(),
-            clear_border=self.check_clear_border.isChecked()
+            clear_border=self.check_clear_border.isChecked(),
+            channel_to_segment=channel_to_segment,
+            channel_helper=channel_helper,
         )
         self.viewer.add_labels(segmented, name='mask')
         if self.output_folder is not None:
@@ -250,6 +272,7 @@ class SerialWidget(QWidget):
         n = self.spinbox_batch_size.value()
         file_list_partition = [file_list[i:i + n] for i in range(0, len(file_list), n)]
 
+        channel_to_segment, channel_helper = self.get_channels_to_use()
         self.cellpose_model, diameter = self.get_cellpose_model(model_type=model_type)
 
         for batch in file_list_partition:
@@ -257,12 +280,28 @@ class SerialWidget(QWidget):
                 image_path=batch,
                 cellpose_model=self.cellpose_model,
                 output_path=self.output_folder,
-                # scaling_factor=self.spinbox_rescaling.value(), # not implemented yet
                 diameter=diameter,
                 flow_threshold=self.flow_threshold.value(),
                 cellprob_threshold=self.cellprob_threshold.value(),
-                clear_border=self.check_clear_border.isChecked()
+                clear_border=self.check_clear_border.isChecked(),
+                channel_to_segment=channel_to_segment,
+                channel_helper=channel_helper
             )
+
+    def get_channels_to_use(self):
+        """Translate selected channels in QCombox into indices.
+        As the first choice is None, channels are already incremented by one
+        as expected by cellpose"""
+        
+        channel_to_segment = 0
+        channel_helper = 0
+        if self.qcbox_channel_to_segment.currentText() != 'None':
+            print(f'self.qcbox_channel_to_segment.currentIndex(): {self.qcbox_channel_to_segment.currentIndex()}')
+            channel_to_segment = self.qcbox_channel_to_segment.currentIndex()
+        if self.qcbox_channel_helper.currentText() != 'None':
+            channel_helper = self.qcbox_channel_helper.currentIndex()
+        
+        return channel_to_segment, channel_helper
 
     def output_and_model_check(self, choose_output=True):
         """Check if output folder and model are set"""
@@ -290,6 +329,13 @@ class SerialWidget(QWidget):
             diameter = self.spinbox_diameter.value()
         
         return cellpose_model, diameter
+
+    def _on_change_layers(self):
+
+        self.qcbox_channel_to_segment.clear()
+        self.qcbox_channel_to_segment.addItems(['None']+[x.name for x in self.viewer.layers if isinstance(x, Image)])
+        self.qcbox_channel_helper.clear()
+        self.qcbox_channel_helper.addItems(['None']+[x.name for x in self.viewer.layers if isinstance(x, Image)])
 
     def _on_click_load_summary(self):
         """Load summary from folder"""

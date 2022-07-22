@@ -3,9 +3,12 @@ import skimage.io
 import skimage.segmentation
 from skimage.measure import regionprops_table
 import pandas as pd
+import numpy as np
+from aicsimageio import AICSImage
 
 def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
-                 diameter=None, flow_threshold=0.4, cellprob_threshold=0.0, clear_border=True):
+                 diameter=None, flow_threshold=0.4, cellprob_threshold=0.0,
+                 clear_border=True, channel_to_segment=0, channel_helper=0):
     """Run cellpose on image.
     
     Parameters
@@ -25,6 +28,11 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
         cellpose setting: pixels greater than the cellprob_threshold are used to run dynamics and determine ROIs
     clear_border : bool
         remove cells touching border
+    channel_to_segment : int, default 0
+        index of channel to segment, if image is multi-channel
+    channel_helper : int, default 0
+        index of helper nucleus channel for models using both cell and nucleus channels
+    
 
     Returns
     -------
@@ -35,18 +43,35 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
 
     if not isinstance(image_path, list):
         image_path = [image_path]
-    image = [skimage.io.imread(x) for x in image_path]
-    
+
+    channels = [0, 0]
+    image = [AICSImage(x) for x in image_path]
+    if len(image[0].dims.shape) == 6:
+        image = [x.get_image_data('YXS', C=0, T=0, Z=0) for x in image]
+        is_rgb = True
+    else:
+        if channel_helper == 0:
+            image = [x.get_image_data('CYX', C=[np.max([0,channel_to_segment-1])] , T=0, Z=0) for x in image]
+        else:
+            image = [x.get_image_data('CYX', C=[np.max([0,channel_to_segment-1]), np.max([0,channel_helper-1])] , T=0, Z=0) for x in image]
+            channels = [0, 1]
+        is_rgb = False
+
     for i in range(len(image)):
         if image[i].ndim == 3:
-            image_gray = skimage.color.rgb2gray(image[i])
-            image_gray = skimage.util.img_as_ubyte(image_gray)
-            image[i] = image_gray
+            if is_rgb:
+                image_gray = skimage.color.rgb2gray(image[i])
+                image_gray = skimage.util.img_as_ubyte(image_gray)
+                image[i] = image_gray
         if scaling_factor != 1:
             image[i] = image[i][::scaling_factor, ::scaling_factor]
     
-    # run cellpose
-    cellpose_output = cellpose_model.eval(image, channels = [[0,0]], diameter=diameter, flow_threshold=flow_threshold, cellprob_threshold=cellprob_threshold)
+        
+    cellpose_output = cellpose_model.eval(
+        image, channels=channels,
+        diameter=diameter, flow_threshold=flow_threshold,
+        cellprob_threshold=cellprob_threshold, channel_axis=0,
+    )
     cellpose_output = cellpose_output[0]
 
     if clear_border is True:
