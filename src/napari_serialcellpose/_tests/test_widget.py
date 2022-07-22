@@ -9,7 +9,7 @@ def test_load_single_image(make_napari_viewer):
     viewer = make_napari_viewer()
     widget = SerialWidget(viewer)
 
-    mypath = Path('src/napari_serialcellpose/_tests/data/singlefile_singlechannel/')
+    mypath = Path('src/napari_serialcellpose/_tests/data/single_file_singlechannel/')
               
     widget.file_list.update_from_path(mypath)
     assert len(viewer.layers) == 0 
@@ -21,7 +21,7 @@ def test_analyse_single_image_no_save(make_napari_viewer):
     viewer = make_napari_viewer()
     widget = SerialWidget(viewer)
 
-    mypath = Path('src/napari_serialcellpose/_tests/data/singlefile_singlechannel/')
+    mypath = Path('src/napari_serialcellpose/_tests/data/single_file_singlechannel/')
               
     widget.file_list.update_from_path(mypath)
     widget.file_list.setCurrentRow(0)
