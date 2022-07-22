@@ -80,7 +80,8 @@ class SerialWidget(QWidget):
         self.folder_group.glayout.addWidget(self.btn_select_output_folder)
 
         self.qcbox_model_choice = QComboBox(visible=True)
-        self.qcbox_model_choice.addItems(['custom', 'cyto', 'cyto2', 'nuclei'])
+        self.qcbox_model_choice.addItems([
+            'custom', 'cyto', 'cyto2', 'nuclei', 'tissuenet'])
         self.folder_group.glayout.addWidget(self.qcbox_model_choice)
 
         self.btn_select_cellpose_model = QPushButton("Select custom cellpose model file")
