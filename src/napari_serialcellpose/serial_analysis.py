@@ -1,14 +1,17 @@
 from pathlib import Path
+import warnings
 import skimage.io
 import skimage.segmentation
-from skimage.measure import regionprops_table
+#from skimage.measure import regionprops_table
+from napari_skimage_regionprops._regionprops import regionprops_table
 import pandas as pd
 import numpy as np
 from aicsimageio import AICSImage
 
 def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
                  diameter=None, flow_threshold=0.4, cellprob_threshold=0.0,
-                 clear_border=True, channel_to_segment=0, channel_helper=0):
+                 clear_border=True, channel_to_segment=0, channel_helper=0,
+                 channel_measure=None, properties=['area']):
     """Run cellpose on image.
     
     Parameters
@@ -32,7 +35,11 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
         index of channel to segment, if image is multi-channel
     channel_helper : int, default 0
         index of helper nucleus channel for models using both cell and nucleus channels
-    
+    channel_measure: int or list of int, default None
+        index of channel(s) in which to measure intensity
+    properties = list of str, default ['size']
+        list of types of properties to compute. Any of 'intensity', 'perimeter', 'shape', 'position', 'moments'
+        
 
     Returns
     -------
@@ -40,21 +47,27 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
         list of segmented images
     """
 
-
     if not isinstance(image_path, list):
         image_path = [image_path]
 
     channels = [0, 0]
-    image = [AICSImage(x) for x in image_path]
-    if len(image[0].dims.shape) == 6:
-        image = [x.get_image_data('YXS', C=0, T=0, Z=0) for x in image]
+    image_aics = [AICSImage(x) for x in image_path]
+    if len(image_aics[0].dims.shape) == 6:
+        image = [x.get_image_data('YXS', C=0, T=0, Z=0) for x in image_aics]
         is_rgb = True
     else:
         if channel_helper == 0:
-            image = [x.get_image_data('CYX', C=[np.max([0,channel_to_segment-1])] , T=0, Z=0) for x in image]
+            image = [x.get_image_data('CYX', C=[np.max([0,channel_to_segment-1])] , T=0, Z=0) for x in image_aics]
         else:
-            image = [x.get_image_data('CYX', C=[np.max([0,channel_to_segment-1]), np.max([0,channel_helper-1])] , T=0, Z=0) for x in image]
+            image = [x.get_image_data('CYX', C=[np.max([0,channel_to_segment-1]), np.max([0,channel_helper-1])] , T=0, Z=0) for x in image_aics]
             channels = [0, 1]
+
+        is_rgb = False
+        image_measure=None
+        if channel_measure is not None:
+            image_measure = [x.get_image_data('YX', C=channel_measure, T=0, Z=0) for x in image_aics]
+        else:
+            image_measure = [None]*len(image)
         is_rgb = False
 
     for i in range(len(image)):
@@ -80,7 +93,7 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
         cellpose_output = [skimage.segmentation.relabel_sequential(im)[0] for im in cellpose_output]
     
     # save output
-    for im, p in zip(cellpose_output, image_path):
+    for im, im_m, p in zip(cellpose_output, image_measure, image_path):
         if output_path is not None:
             output_path = Path(output_path)
             save_path = output_path.joinpath(p.stem+'_mask.tif')
@@ -88,24 +101,30 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
 
             compute_props(
                 label_image=im,
+                intensity_image=im_m,
                 output_path=output_path,
-                image_name=p
+                image_name=p,
+                properties=properties
                 )
 
     return cellpose_output
 
 
-def compute_props(label_image, output_path, image_name):
+def compute_props(label_image, intensity_image, output_path, image_name, properties=['area']):
     """Compute properties of segmented image.
     
     Parameters
     ----------
     label_image : array
         image with labeled cells
+    intensity_image : array
+        image with intensity values
     output_path : str or Path
         path to output folder
     image_name : str or Path
         either path to image or image name
+    properties = list of str, default ['size']
+        list of types of properties to compute. Any of 'intensity', 'perimeter', 'shape', 'position', 'moments'
 
     """
     
@@ -113,15 +132,26 @@ def compute_props(label_image, output_path, image_name):
     output_path = Path(output_path).joinpath('tables')
     if not output_path.exists():
         output_path.mkdir(parents=True)
-
-    props = regionprops_table(label_image,
-                          properties=('label', 'area', 'eccentricity', 'solidity', 'feret_diameter_max'))
+    
+    if intensity_image is None:
+        if "intensity" in properties:
+            warnings.warn("Computing intensity features but no intensity image provided. Result will be zero.")
+        intensity_image = np.zeros(label_image.shape)
         
-    props['eccentricity'] = props['eccentricity'].round(2)
-    props['feret_diameter_max'] = props['feret_diameter_max'].round(2)
-    props['solidity'] = props['solidity'].round(2)
+    props = regionprops_table(
+        image=intensity_image, labels=label_image,
+        size='size' in properties,
+        intensity='intensity' in properties,
+        perimeter='perimeter' in properties,
+        shape='shape' in properties,
+        position='position' in properties,
+        moments='moments' in properties,
+        )
+        
+    #props['eccentricity'] = props['eccentricity'].round(2)
+    #props['feret_diameter_max'] = props['feret_diameter_max'].round(2)
+    #props['solidity'] = props['solidity'].round(2)
 
-    props = pd.DataFrame(props)
     props.to_csv(output_path.joinpath(image_name.stem+'_props.csv'), index=False)
 
 
@@ -147,6 +177,7 @@ def load_props(output_path, image_name):
 
     # load properties
     props_path = Path(output_path).joinpath(image_name.stem+'_props.csv')
+    props=None
     if props_path.exists():
         props = pd.read_csv(props_path)
 

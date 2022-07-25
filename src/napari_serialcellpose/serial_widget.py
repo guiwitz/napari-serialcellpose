@@ -100,7 +100,7 @@ class SerialWidget(QWidget):
         self.run_group.glayout.addWidget(self.check_usegpu)
 
         self._options_tab_layout.setAlignment(Qt.AlignTop)
-        self.options_group = VHGroup('Options', orientation='G')
+        self.options_group = VHGroup('Segmentation Options', orientation='G')
         self._options_tab_layout.addWidget(self.options_group.gbox)
 
         self.options_group.glayout.addWidget(QLabel("Batch size"), 0, 0, 1, 1)
@@ -130,26 +130,47 @@ class SerialWidget(QWidget):
 
         self.check_clear_border = QCheckBox('Clear labels on border')
         self.check_clear_border.setChecked(True)
-        self.options_group.glayout.addWidget(self.check_clear_border) 
+        self.options_group.glayout.addWidget(self.check_clear_border)
 
+        self.property_options_group = VHGroup('Properties Options', orientation='G')
+        self._options_tab_layout.addWidget(self.property_options_group.gbox)
+
+        props_types = [
+            'size', 'intensity', 'perimeter', 'shape', 'position',
+            'moments']
+        self.check_props = {}
+        for ind, p in enumerate(props_types):
+            self.property_options_group.glayout.addWidget(QLabel(p), ind, 0, 1, 1)
+            self.check_props[p] = QCheckBox()
+            self.property_options_group.glayout.addWidget(self.check_props[p], ind, 1, 1, 1)
+        
+        self.property_options_group.glayout.addWidget(QLabel('Analysis channel'), ind+1, 0, 1, 1)
+        self.qcbox_channel_analysis = QComboBox()
+        self.property_options_group.glayout.addWidget(self.qcbox_channel_analysis, ind+1,1,1,1)
+        
         self.mainoptions_group = VHGroup('Main options', orientation='G')
         self._segmentation_layout.addWidget(self.mainoptions_group.gbox)
 
-        self.qcbox_channel_to_segment = QComboBox()
         self.mainoptions_group.glayout.addWidget(QLabel('Channel to segment'), 0, 0, 1, 1)
+        self.qcbox_channel_to_segment = QComboBox()
         self.mainoptions_group.glayout.addWidget(self.qcbox_channel_to_segment, 0,1,1,1)
         self.mainoptions_group.glayout.addWidget(QLabel('Helper channel'), 1, 0, 1, 1)
         self.qcbox_channel_helper = QComboBox()
         self.mainoptions_group.glayout.addWidget(self.qcbox_channel_helper, 1,1,1,1)
         self.diameter_label = QLabel("Diameter", visible=False)
-        self.mainoptions_group.glayout.addWidget(self.diameter_label, 2, 0, 1, 1)
+        self.mainoptions_group.glayout.addWidget(self.diameter_label, 3, 0, 1, 1)
         self.spinbox_diameter = QSpinBox(visible=False)
         self.spinbox_diameter.setValue(30)
         self.spinbox_diameter.setMaximum(1000)
-        self.mainoptions_group.glayout.addWidget(self.spinbox_diameter, 2, 1, 1, 1)
+        self.mainoptions_group.glayout.addWidget(self.spinbox_diameter, 3, 1, 1, 1)
 
         self.plot_group = VHGroup('Plots')
         self._properties_layout.addWidget(self.plot_group.gbox)
+
+        self.props_to_plot1 = QComboBox()
+        self.props_to_plot2 = QComboBox()
+        self.plot_group.glayout.addWidget(self.props_to_plot1)
+        self.plot_group.glayout.addWidget(self.props_to_plot2)
 
         self.sc = MplCanvas(self, row=1, col=2, width=6, height=4, dpi=100)
         self.toolbar = NavigationToolbar(self.sc, self)
@@ -180,6 +201,8 @@ class SerialWidget(QWidget):
         self.qcbox_model_choice.currentTextChanged.connect(self._on_change_modeltype)
         self.btn_load_summary.clicked.connect(self._on_click_load_summary)
         self.eccentricity_slider.changed.connect(self.update_eccentricity)
+        self.props_to_plot1.currentIndexChanged.connect(self._on_choose_props_to_plot)
+        self.props_to_plot2.currentIndexChanged.connect(self._on_choose_props_to_plot)
         self.viewer.layers.events.connect(self._on_change_layers)
 
     def open_file(self):
@@ -204,7 +227,8 @@ class SerialWidget(QWidget):
                 mask = skimage.io.imread(mask_path)
                 self.viewer.add_labels(mask, name='mask')
                 props = load_props(self.output_folder, image_name)
-                self.add_table_props(props)
+                if props is not None:
+                    self.add_table_props(props)
 
         return True
 
@@ -240,7 +264,8 @@ class SerialWidget(QWidget):
         
         self.cellpose_model, diameter = self.get_cellpose_model(model_type=model_type)
         
-        channel_to_segment, channel_helper = self.get_channels_to_use()
+        channel_to_segment, channel_helper, channel_analysis = self.get_channels_to_use()
+        reg_props = [k for k in self.check_props.keys() if self.check_props[k].isChecked()]
 
         # run cellpose
         segmented = run_cellpose(
@@ -253,6 +278,8 @@ class SerialWidget(QWidget):
             clear_border=self.check_clear_border.isChecked(),
             channel_to_segment=channel_to_segment,
             channel_helper=channel_helper,
+            channel_measure=channel_analysis,
+            properties=reg_props
         )
         self.viewer.add_labels(segmented, name='mask')
         if self.output_folder is not None:
@@ -272,7 +299,7 @@ class SerialWidget(QWidget):
         n = self.spinbox_batch_size.value()
         file_list_partition = [file_list[i:i + n] for i in range(0, len(file_list), n)]
 
-        channel_to_segment, channel_helper = self.get_channels_to_use()
+        channel_to_segment, channel_helper, channel_analysis = self.get_channels_to_use()
         self.cellpose_model, diameter = self.get_cellpose_model(model_type=model_type)
 
         for batch in file_list_partition:
@@ -285,7 +312,9 @@ class SerialWidget(QWidget):
                 cellprob_threshold=self.cellprob_threshold.value(),
                 clear_border=self.check_clear_border.isChecked(),
                 channel_to_segment=channel_to_segment,
-                channel_helper=channel_helper
+                channel_helper=channel_helper,
+                channel_measure=channel_analysis,
+                properties=[]
             )
 
     def get_channels_to_use(self):
@@ -295,13 +324,16 @@ class SerialWidget(QWidget):
         
         channel_to_segment = 0
         channel_helper = 0
+        channel_analysis = None
         if self.qcbox_channel_to_segment.currentText() != 'None':
             print(f'self.qcbox_channel_to_segment.currentIndex(): {self.qcbox_channel_to_segment.currentIndex()}')
             channel_to_segment = self.qcbox_channel_to_segment.currentIndex()
         if self.qcbox_channel_helper.currentText() != 'None':
             channel_helper = self.qcbox_channel_helper.currentIndex()
+        if self.qcbox_channel_analysis.currentText() != 'None':
+            channel_analysis = self.qcbox_channel_analysis.currentIndex()-1
         
-        return channel_to_segment, channel_helper
+        return channel_to_segment, channel_helper, channel_analysis
 
     def output_and_model_check(self, choose_output=True):
         """Check if output folder and model are set"""
@@ -336,6 +368,8 @@ class SerialWidget(QWidget):
         self.qcbox_channel_to_segment.addItems(['None']+[x.name for x in self.viewer.layers if isinstance(x, Image)])
         self.qcbox_channel_helper.clear()
         self.qcbox_channel_helper.addItems(['None']+[x.name for x in self.viewer.layers if isinstance(x, Image)])
+        self.qcbox_channel_analysis.clear()
+        self.qcbox_channel_analysis.addItems(['None']+[x.name for x in self.viewer.layers if isinstance(x, Image)])
 
     def _on_click_load_summary(self):
         """Load summary from folder"""
@@ -371,19 +405,32 @@ class SerialWidget(QWidget):
             self.props_table._layer = self.viewer.layers['mask'] 
             self.props_table.update_content()
 
-        #self.sc.axes.clear()       
-        #self.sc.axes.hist(props['feret_diameter_max'], rwidth=0.85)
-        #self.sc.axes.figure.canvas.draw()
-
-        prop_names = ['eccentricity', 'feret_diameter_max']
-        for i in range(len(prop_names)):
+        prop_names = list(self.props_table.get_content().keys())
+        self.props_to_plot1.addItems(prop_names)
+        self.props_to_plot2.addItems(prop_names)
+        for i in range(np.min([len(prop_names),1])):#range(len(prop_names)):
             self.sc.ax[0,i].clear()
             self.sc.ax[0,i].hist(props[prop_names[i]], rwidth=0.85)
             self.sc.ax[0,i].figure.canvas.draw()
             self.sc.ax[0,i].tick_params(colors='black',labelsize=12)
             self.sc.ax[0,i].set_title(prop_names[i], fontsize=15, color='black')
 
-    def update_eccentricity(self, vakue):
+    def _on_choose_props_to_plot(self):
+
+        prop_names = []
+        if self.props_to_plot1.currentText() != '':
+            prop_names.append(self.props_to_plot1.currentText())
+        if self.props_to_plot2.currentText() != '':
+            prop_names.append(self.props_to_plot2.currentText())
+
+        for ind, p in enumerate(prop_names):
+            self.sc.ax[0,ind].clear()
+            self.sc.ax[0,ind].hist(self.props_table.get_content()[p], rwidth=0.85)
+            self.sc.ax[0,ind].figure.canvas.draw()
+            self.sc.ax[0,ind].tick_params(colors='black',labelsize=12)
+            self.sc.ax[0,ind].set_title(p, fontsize=15, color='black')
+
+    def update_eccentricity(self, value):
         """Update eccentricity plot"""
 
         if self.allprops is None:
