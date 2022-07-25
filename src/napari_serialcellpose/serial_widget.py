@@ -184,6 +184,11 @@ class SerialWidget(QWidget):
         self.btn_load_summary = QPushButton("Load summary")
         self._summary_layout.addWidget(self.btn_load_summary)
 
+        self.summary_props_to_plot1 = QComboBox()
+        self.summary_props_to_plot2 = QComboBox()
+        self._summary_layout.addWidget(self.summary_props_to_plot1)
+        self._summary_layout.addWidget(self.summary_props_to_plot2)
+
         self.choose_filtering_prop = QComboBox()
         self._summary_layout.addWidget(self.choose_filtering_prop)
 
@@ -209,7 +214,9 @@ class SerialWidget(QWidget):
         self.filterprop_max_slider.changed.connect(self.update_filterprop)
         self.props_to_plot1.currentIndexChanged.connect(self._on_choose_props_to_plot)
         self.props_to_plot2.currentIndexChanged.connect(self._on_choose_props_to_plot)
-        self.choose_filtering_prop.currentIndexChanged.connect(self._on_update_filtering_prop)
+        self.summary_props_to_plot1.currentIndexChanged.connect(self.update_filterprop)
+        self.summary_props_to_plot2.currentIndexChanged.connect(self.update_filterprop)
+        self.choose_filtering_prop.currentIndexChanged.connect(self._on_update_filtering_sliders)
         self.viewer.layers.events.connect(self._on_change_layers)
 
     def open_file(self):
@@ -370,6 +377,7 @@ class SerialWidget(QWidget):
         return cellpose_model, diameter
 
     def _on_change_layers(self):
+        """Update layers lists in comboxes when layer is added or removed"""
 
         self.qcbox_channel_to_segment.clear()
         self.qcbox_channel_to_segment.addItems(['None']+[x.name for x in self.viewer.layers if isinstance(x, Image)])
@@ -384,25 +392,28 @@ class SerialWidget(QWidget):
         self.allprops = load_allprops(self.output_folder)
         prop_names = list(self.allprops.columns)
         self.choose_filtering_prop.addItems(prop_names)
+        self.summary_props_to_plot1.addItems(prop_names)
+        self.summary_props_to_plot2.addItems(prop_names)
         self.choose_filtering_prop.setCurrentIndex(0)
+
         filtering_props = self.choose_filtering_prop.currentText()
-        if filtering_props!='':
+        if filtering_props != '':
             props = self.allprops[
                 (self.allprops[filtering_props] < self.filterprop_max_slider.value) &
                 (self.allprops[filtering_props] > self.filterprop_min_slider.value)
             ]
             prop_names = []
-            if self.props_to_plot1.currentText() != '':
-                prop_names.append(self.props_to_plot1.currentText())
-            if self.props_to_plot2.currentText() != '':
-                prop_names.append(self.props_to_plot2.currentText())
+            if self.summary_props_to_plot1.currentText() != '':
+                prop_names.append(self.summary_props_to_plot1.currentText())
+            if self.summary_props_to_plot2.currentText() != '':
+                prop_names.append(self.summary_props_to_plot2.currentText())
 
             for ind, p in enumerate(prop_names):
                 self.sc_sum.ax[0,ind].clear()
-                self.sc_sum.ax[0,ind].hist(props[prop_names[ind]], rwidth=0.85)
+                self.sc_sum.ax[0,ind].hist(props[p], rwidth=0.85)
                 self.sc_sum.ax[0,ind].figure.canvas.draw()
                 self.sc_sum.ax[0,ind].tick_params(colors='black',labelsize=12)
-                self.sc_sum.ax[0,ind].set_title(prop_names[ind], fontsize=15, color='black')
+                self.sc_sum.ax[0,ind].set_title(p, fontsize=15, color='black')
 
     def _on_change_modeltype(self):
         "if selecting non-custom model, show diameter box"
@@ -436,6 +447,7 @@ class SerialWidget(QWidget):
             self.sc.ax[0,i].set_title(prop_names[i], fontsize=15, color='black')
 
     def _on_choose_props_to_plot(self):
+        """Update histograms when selected properties are changed"""
 
         prop_names = []
         if self.props_to_plot1.currentText() != '':
@@ -450,7 +462,8 @@ class SerialWidget(QWidget):
             self.sc.ax[0,ind].tick_params(colors='black',labelsize=12)
             self.sc.ax[0,ind].set_title(p, fontsize=15, color='black')        
 
-    def _on_update_filtering_prop(self):
+    def _on_update_filtering_sliders(self):
+        """Update filtering sliders and display when filtering property is changed"""
 
         if self.allprops is None:
             self._on_click_load_summary()
@@ -475,16 +488,16 @@ class SerialWidget(QWidget):
             self._on_click_load_summary()
         else:
             filtering_props = self.choose_filtering_prop.currentText()
-            if filtering_props!='':
+            if filtering_props != '':
                 props = self.allprops[
                     (self.allprops[filtering_props] < self.filterprop_max_slider.value) &
                     (self.allprops[filtering_props] > self.filterprop_min_slider.value)
                 ]
                 prop_names = []
-                if self.props_to_plot1.currentText() != '':
-                    prop_names.append(self.props_to_plot1.currentText())
-                if self.props_to_plot2.currentText() != '':
-                    prop_names.append(self.props_to_plot2.currentText())
+                if self.summary_props_to_plot1.currentText() != '':
+                    prop_names.append(self.summary_props_to_plot1.currentText())
+                if self.summary_props_to_plot2.currentText() != '':
+                    prop_names.append(self.summary_props_to_plot2.currentText())
 
                 for ind, p in enumerate(prop_names):
                     self.sc_sum.ax[0,ind].clear()
