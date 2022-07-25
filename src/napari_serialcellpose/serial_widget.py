@@ -184,8 +184,11 @@ class SerialWidget(QWidget):
         self.btn_load_summary = QPushButton("Load summary")
         self._summary_layout.addWidget(self.btn_load_summary)
 
-        self.eccentricity_slider = magicgui.widgets.FloatSlider(min=0, max=1, step=0.01, value=1)
-        self._summary_layout.addWidget(self.eccentricity_slider.native)
+        self.choose_filtering_prop = QComboBox()
+        self._summary_layout.addWidget(self.choose_filtering_prop)
+
+        self.filterprop_slider = magicgui.widgets.FloatSlider(min=0, max=1, step=0.01, value=1)
+        self._summary_layout.addWidget(self.filterprop_slider.native)
 
         self.add_connections()
 
@@ -200,9 +203,10 @@ class SerialWidget(QWidget):
         self.btn_run_on_folder.clicked.connect(self._on_click_run_on_folder)
         self.qcbox_model_choice.currentTextChanged.connect(self._on_change_modeltype)
         self.btn_load_summary.clicked.connect(self._on_click_load_summary)
-        self.eccentricity_slider.changed.connect(self.update_eccentricity)
+        self.filterprop_slider.changed.connect(self.update_filterprop)
         self.props_to_plot1.currentIndexChanged.connect(self._on_choose_props_to_plot)
         self.props_to_plot2.currentIndexChanged.connect(self._on_choose_props_to_plot)
+        self.choose_filtering_prop.currentIndexChanged.connect(self._on_update_filtering_prop)
         self.viewer.layers.events.connect(self._on_change_layers)
 
     def open_file(self):
@@ -375,14 +379,24 @@ class SerialWidget(QWidget):
         """Load summary from folder"""
 
         self.allprops = load_allprops(self.output_folder)
-        props = self.allprops[self.allprops.eccentricity < self.eccentricity_slider.value]
-        prop_names = ['eccentricity', 'feret_diameter_max']
-        for i in range(len(prop_names)):
-            self.sc_sum.ax[0,i].clear()
-            self.sc_sum.ax[0,i].hist(props[prop_names[i]], rwidth=0.85)
-            self.sc_sum.ax[0,i].figure.canvas.draw()
-            self.sc_sum.ax[0,i].tick_params(colors='black',labelsize=12)
-            self.sc_sum.ax[0,i].set_title(prop_names[i], fontsize=15, color='black')
+        prop_names = list(self.allprops.columns)
+        self.choose_filtering_prop.addItems(prop_names)
+        self.choose_filtering_prop.setCurrentIndex(0)
+        filtering_props = self.choose_filtering_prop.currentText()
+        if filtering_props!='':
+            props = self.allprops[self.allprops[filtering_props] < self.filterprop_slider.value]
+            prop_names = []
+            if self.props_to_plot1.currentText() != '':
+                prop_names.append(self.props_to_plot1.currentText())
+            if self.props_to_plot2.currentText() != '':
+                prop_names.append(self.props_to_plot2.currentText())
+
+            for ind, p in enumerate(prop_names):
+                self.sc_sum.ax[0,ind].clear()
+                self.sc_sum.ax[0,ind].hist(props[prop_names[ind]], rwidth=0.85)
+                self.sc_sum.ax[0,ind].figure.canvas.draw()
+                self.sc_sum.ax[0,ind].tick_params(colors='black',labelsize=12)
+                self.sc_sum.ax[0,ind].set_title(prop_names[ind], fontsize=15, color='black')
 
     def _on_change_modeltype(self):
         "if selecting non-custom model, show diameter box"
@@ -428,22 +442,45 @@ class SerialWidget(QWidget):
             self.sc.ax[0,ind].hist(self.props_table.get_content()[p], rwidth=0.85)
             self.sc.ax[0,ind].figure.canvas.draw()
             self.sc.ax[0,ind].tick_params(colors='black',labelsize=12)
-            self.sc.ax[0,ind].set_title(p, fontsize=15, color='black')
+            self.sc.ax[0,ind].set_title(p, fontsize=15, color='black')        
 
-    def update_eccentricity(self, value):
-        """Update eccentricity plot"""
+    def _on_update_filtering_prop(self):
+
+        if self.allprops is None:
+            self._on_click_load_summary()
+        filtering_props = self.choose_filtering_prop.currentText()
+        
+        if filtering_props!='':
+
+            min_val = self.allprops[filtering_props].min()
+            max_val = self.allprops[filtering_props].max()
+
+            self.filterprop_slider.min = min_val
+            self.filterprop_slider.max = max_val
+
+            self.update_filterprop()
+
+    def update_filterprop(self, value=None):
+        """Update filterprop plot"""
 
         if self.allprops is None:
             self._on_click_load_summary()
         else:
-            props = self.allprops[self.allprops.eccentricity < self.eccentricity_slider.value]
-            prop_names = ['eccentricity', 'feret_diameter_max']
-            for i in range(len(prop_names)):
-                self.sc_sum.ax[0,i].clear()
-                self.sc_sum.ax[0,i].hist(props[prop_names[i]], rwidth=0.85)
-                self.sc_sum.ax[0,i].figure.canvas.draw()
-                self.sc_sum.ax[0,i].tick_params(colors='black',labelsize=12)
-                self.sc_sum.ax[0,i].set_title(prop_names[i], fontsize=15, color='black')
+            filtering_props = self.choose_filtering_prop.currentText()
+            if filtering_props!='':
+                props = self.allprops[self.allprops[filtering_props] < self.filterprop_slider.value]
+                prop_names = []
+                if self.props_to_plot1.currentText() != '':
+                    prop_names.append(self.props_to_plot1.currentText())
+                if self.props_to_plot2.currentText() != '':
+                    prop_names.append(self.props_to_plot2.currentText())
+
+                for ind, p in enumerate(prop_names):
+                    self.sc_sum.ax[0,ind].clear()
+                    self.sc_sum.ax[0,ind].hist(props[prop_names[ind]], rwidth=0.85)
+                    self.sc_sum.ax[0,ind].figure.canvas.draw()
+                    self.sc_sum.ax[0,ind].tick_params(colors='black',labelsize=12)
+                    self.sc_sum.ax[0,ind].set_title(prop_names[ind], fontsize=15, color='black')
 
 
 class VHGroup():
