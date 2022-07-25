@@ -187,8 +187,10 @@ class SerialWidget(QWidget):
         self.choose_filtering_prop = QComboBox()
         self._summary_layout.addWidget(self.choose_filtering_prop)
 
-        self.filterprop_slider = magicgui.widgets.FloatSlider(min=0, max=1, step=0.01, value=1)
-        self._summary_layout.addWidget(self.filterprop_slider.native)
+        self.filterprop_min_slider = magicgui.widgets.FloatSlider(min=0, max=1, step=0.01, value=1)
+        self._summary_layout.addWidget(self.filterprop_min_slider.native)
+        self.filterprop_max_slider = magicgui.widgets.FloatSlider(min=0, max=1, step=0.01, value=1)
+        self._summary_layout.addWidget(self.filterprop_max_slider.native)
 
         self.add_connections()
 
@@ -203,7 +205,8 @@ class SerialWidget(QWidget):
         self.btn_run_on_folder.clicked.connect(self._on_click_run_on_folder)
         self.qcbox_model_choice.currentTextChanged.connect(self._on_change_modeltype)
         self.btn_load_summary.clicked.connect(self._on_click_load_summary)
-        self.filterprop_slider.changed.connect(self.update_filterprop)
+        self.filterprop_min_slider.changed.connect(self.update_filterprop)
+        self.filterprop_max_slider.changed.connect(self.update_filterprop)
         self.props_to_plot1.currentIndexChanged.connect(self._on_choose_props_to_plot)
         self.props_to_plot2.currentIndexChanged.connect(self._on_choose_props_to_plot)
         self.choose_filtering_prop.currentIndexChanged.connect(self._on_update_filtering_prop)
@@ -384,7 +387,10 @@ class SerialWidget(QWidget):
         self.choose_filtering_prop.setCurrentIndex(0)
         filtering_props = self.choose_filtering_prop.currentText()
         if filtering_props!='':
-            props = self.allprops[self.allprops[filtering_props] < self.filterprop_slider.value]
+            props = self.allprops[
+                (self.allprops[filtering_props] < self.filterprop_max_slider.value) &
+                (self.allprops[filtering_props] > self.filterprop_min_slider.value)
+            ]
             prop_names = []
             if self.props_to_plot1.currentText() != '':
                 prop_names.append(self.props_to_plot1.currentText())
@@ -455,8 +461,10 @@ class SerialWidget(QWidget):
             min_val = self.allprops[filtering_props].min()
             max_val = self.allprops[filtering_props].max()
 
-            self.filterprop_slider.min = min_val
-            self.filterprop_slider.max = max_val
+            self.filterprop_min_slider.min = min_val
+            self.filterprop_min_slider.max = max_val
+            self.filterprop_max_slider.min = min_val
+            self.filterprop_max_slider.max = max_val
 
             self.update_filterprop()
 
@@ -468,7 +476,10 @@ class SerialWidget(QWidget):
         else:
             filtering_props = self.choose_filtering_prop.currentText()
             if filtering_props!='':
-                props = self.allprops[self.allprops[filtering_props] < self.filterprop_slider.value]
+                props = self.allprops[
+                    (self.allprops[filtering_props] < self.filterprop_max_slider.value) &
+                    (self.allprops[filtering_props] > self.filterprop_min_slider.value)
+                ]
                 prop_names = []
                 if self.props_to_plot1.currentText() != '':
                     prop_names.append(self.props_to_plot1.currentText())
