@@ -233,7 +233,7 @@ class SerialWidget(QWidget):
         image_name = self.file_list.currentItem().text()
         image_path = self.file_list.folder_path.joinpath(image_name)
 
-        self.viewer.open(image_path)
+        self.viewer.open(image_path, plugin='napari-aicsimageio')
 
         if self.output_folder is not None:
             mask_path = Path(self.output_folder).joinpath(image_path.stem+'_mask.tif')
@@ -313,8 +313,10 @@ class SerialWidget(QWidget):
         n = self.spinbox_batch_size.value()
         file_list_partition = [file_list[i:i + n] for i in range(0, len(file_list), n)]
 
-        channel_to_segment, channel_helper, channel_analysis = self.get_channels_to_use()
         self.cellpose_model, diameter = self.get_cellpose_model(model_type=model_type)
+
+        channel_to_segment, channel_helper, channel_analysis = self.get_channels_to_use()
+        reg_props = [k for k in self.check_props.keys() if self.check_props[k].isChecked()]
 
         for batch in file_list_partition:
             run_cellpose(
@@ -328,7 +330,7 @@ class SerialWidget(QWidget):
                 channel_to_segment=channel_to_segment,
                 channel_helper=channel_helper,
                 channel_measure=channel_analysis,
-                properties=[]
+                properties=reg_props
             )
 
     def get_channels_to_use(self):
@@ -369,7 +371,7 @@ class SerialWidget(QWidget):
                 gpu=self.check_usegpu.isChecked(),
                 pretrained_model=self.cellpose_model_path)
         else:
-            cellpose_model = models.Cellpose(
+            cellpose_model = models.CellposeModel(
                 gpu=self.check_usegpu.isChecked(),
                 model_type=model_type)
             diameter = self.spinbox_diameter.value()
