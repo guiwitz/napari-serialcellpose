@@ -61,7 +61,7 @@ class SerialWidget(QWidget):
 
         # summary tab
         self.summary = QWidget()
-        self._summary_layout = QVBoxLayout()
+        self._summary_layout = QGridLayout()# QVBoxLayout()
         self.summary.setLayout(self._summary_layout)
         self.tabs.addTab(self.summary, 'Summary')
 
@@ -179,23 +179,28 @@ class SerialWidget(QWidget):
 
         self.sc_sum = MplCanvas(self, row=1, col=2, width=6, height=4, dpi=100)
         self.toolbar_sum = NavigationToolbar(self.sc_sum, self)
-        self._summary_layout.addWidget(self.toolbar_sum)
-        self._summary_layout.addWidget(self.sc_sum)
+        self._summary_layout.addWidget(self.toolbar_sum, 0, 0, 1, 2)
+        self._summary_layout.addWidget(self.sc_sum, 1, 0, 1, 2)
         self.btn_load_summary = QPushButton("Load summary")
-        self._summary_layout.addWidget(self.btn_load_summary)
+        self._summary_layout.addWidget(self.btn_load_summary, 2, 0, 1, 2)
 
         self.summary_props_to_plot1 = QComboBox()
         self.summary_props_to_plot2 = QComboBox()
-        self._summary_layout.addWidget(self.summary_props_to_plot1)
-        self._summary_layout.addWidget(self.summary_props_to_plot2)
+        self._summary_layout.addWidget(QLabel('Property 1'), 3, 0, 1, 1)
+        self._summary_layout.addWidget(self.summary_props_to_plot1, 3, 1, 1, 1)
+        self._summary_layout.addWidget(QLabel('Property 1'), 4, 0, 1, 1)
+        self._summary_layout.addWidget(self.summary_props_to_plot2, 4, 1, 1, 1)
 
+        self._summary_layout.addWidget(QLabel('Filtering property'), 5, 0, 1, 1)
         self.choose_filtering_prop = QComboBox()
-        self._summary_layout.addWidget(self.choose_filtering_prop)
+        self._summary_layout.addWidget(self.choose_filtering_prop, 5, 1, 1, 1)
 
+        self._summary_layout.addWidget(QLabel('Filtering min'), 6, 0, 1, 1)
         self.filterprop_min_slider = magicgui.widgets.FloatSlider(min=0, max=1, step=0.01, value=1)
-        self._summary_layout.addWidget(self.filterprop_min_slider.native)
+        self._summary_layout.addWidget(self.filterprop_min_slider.native, 6, 1, 1, 1)
+        self._summary_layout.addWidget(QLabel('Filtering min'), 7, 0, 1, 1)
         self.filterprop_max_slider = magicgui.widgets.FloatSlider(min=0, max=1, step=0.01, value=1)
-        self._summary_layout.addWidget(self.filterprop_max_slider.native)
+        self._summary_layout.addWidget(self.filterprop_max_slider.native, 7, 1, 1, 1)
 
         self.add_connections()
 
