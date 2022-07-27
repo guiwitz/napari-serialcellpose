@@ -22,9 +22,16 @@ Then activate it and install the plugin:
     conda activate serialcellpose
     pip install git+https://github.com/guiwitz/napari-serialcellpose.git
 
+### Potential issue with PyTorch
+
+Cellpose and therefore the plugin and napari can crash without warning in some cases with ```torch==1.12.0```. This can be fixed by reverting to an earlier version using:
+    
+    pip install torch==1.11.0
+
 ### GPU
 
 In order to use a GPU:
+
 1. Uninstall the PyTorch version that gets installed by default with Cellpose:
 
     pip uninstall torch
