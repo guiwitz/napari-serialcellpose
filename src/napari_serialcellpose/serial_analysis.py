@@ -11,7 +11,7 @@ from aicsimageio import AICSImage
 def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
                  diameter=None, flow_threshold=0.4, cellprob_threshold=0.0,
                  clear_border=True, channel_to_segment=0, channel_helper=0,
-                 channel_measure=None, properties=['area']):
+                 channel_measure=None, properties=None):
     """Run cellpose on image.
     
     Parameters
@@ -37,7 +37,7 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
         index of helper nucleus channel for models using both cell and nucleus channels
     channel_measure: int or list of int, default None
         index of channel(s) in which to measure intensity
-    properties = list of str, default ['size']
+    properties = list of str, default None
         list of types of properties to compute. Any of 'intensity', 'perimeter', 'shape', 'position', 'moments'
         
 
@@ -49,6 +49,9 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
 
     if not isinstance(image_path, list):
         image_path = [image_path]
+
+    if properties is None:
+        properties = []
 
     channels = [0, 0]
     image_aics = [AICSImage(x) for x in image_path]
@@ -110,7 +113,7 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
     return cellpose_output
 
 
-def compute_props(label_image, intensity_image, output_path, image_name, properties=['area']):
+def compute_props(label_image, intensity_image, output_path, image_name, properties=None):
     """Compute properties of segmented image.
     
     Parameters
@@ -123,7 +126,7 @@ def compute_props(label_image, intensity_image, output_path, image_name, propert
         path to output folder
     image_name : str or Path
         either path to image or image name
-    properties = list of str, default ['size']
+    properties = list of str, default None
         list of types of properties to compute. Any of 'intensity', 'perimeter', 'shape', 'position', 'moments'
 
     """
@@ -133,6 +136,9 @@ def compute_props(label_image, intensity_image, output_path, image_name, propert
     if not output_path.exists():
         output_path.mkdir(parents=True)
     
+    if properties is None:
+        properties = []
+        
     if intensity_image is None:
         if "intensity" in properties:
             warnings.warn("Computing intensity features but no intensity image provided. Result will be zero.")
