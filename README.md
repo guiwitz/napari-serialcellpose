@@ -13,33 +13,27 @@ This plugin uses the great [napari-skimage-regionprops](https://github.com/haesl
 
 ## Installation
 
-In order to let users choose whether they want to use the GPU or not for segmentation, cellpose is not added as a dependency of this package. Therefore, to use this plugin you need to create an environment and install a few packages manually. First create the environment:
+In order to use this plugin, whe highly recommend to create a specific environment and to install the required software in it. You can create a conda environment using:
 
-    conda create -n serialcellpose python=3.8.5
+    conda create -n serialcellpose python=3.8.5 napari -c conda-forge
 
-Then activate it and install napari and the plugin:
+Then activate it and install the plugin:
     
     conda activate serialcellpose
-    pip install "napari[all]"
     pip install git+https://github.com/guiwitz/napari-serialcellpose.git
-
-### CPU
-
-Then for CPU work, just install cellpose in the regular way:
-    
-    pip install cellpose
 
 ### GPU
 
-For GPU work, you just need to make sure that you have an NVIDIA card and the appropriate driver for it. Then you can install PyTorch via conda using a command that you can find [here](https://pytorch.org/get-started/locally/) (this takes care of the cuda toolkit, cudnn etc. so **no need to install manually anything more than the driver**). The command will look like this:
+In order to use a GPU:
+1. Uninstall the PyTorch version that gets installed by default with Cellpose:
+
+    pip uninstall torch
+
+2. Make sure your have up-to-date drivers for your NVIDIA card installed.
+
+3. Re-install a GPU version of PyTorch via conda using a command that you can find [here](https://pytorch.org/get-started/locally/) (this takes care of the cuda toolkit, cudnn etc. so **no need to install manually anything more than the driver**). The command will look like this:
 
     conda install pytorch torchvision cudatoolkit=11.3 -c pytorch
-
-Finally you can install cellpose:
-    
-    pip install cellpose
-
-**Note that it is important to install PyTorch before Cellpose, otherwise Cellpose will install non-GPU dependencies.**
 
 ### Plugin Updates
 
@@ -51,6 +45,7 @@ To update the plugin, you only need to activate the existing environment and ins
 ## Usage: segmentation
 
 The main interface is shown below. The sequence of events should be the following:
+
 1. Select a folder containing images. The list of files within that folder will appear in the area above. You can also just drag and drop a folder or an image in that area. When selecting an image, it gets displayed in the viewer. Images are opened via [aicsimageio](https://allencellmodeling.github.io/aicsimageio/). You can use grayscale images, RGB images or multi-channel images. In the latter case, **make sure each channel opens as a separate layer when you open them using the napari-aicsimagio importer**.
 2. If you want to save the segmentation and tables with properties, select a folder that will contain the output.
 3. Select the type of cellpose model.
