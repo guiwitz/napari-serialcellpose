@@ -347,7 +347,6 @@ class SerialWidget(QWidget):
         channel_helper = 0
         channel_analysis = None
         if self.qcbox_channel_to_segment.currentText() != 'None':
-            print(f'self.qcbox_channel_to_segment.currentIndex(): {self.qcbox_channel_to_segment.currentIndex()}')
             channel_to_segment = self.qcbox_channel_to_segment.currentIndex()
         if self.qcbox_channel_helper.currentText() != 'None':
             channel_helper = self.qcbox_channel_helper.currentIndex()
