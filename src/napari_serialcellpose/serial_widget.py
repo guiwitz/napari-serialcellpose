@@ -134,7 +134,9 @@ class SerialWidget(QWidget):
         self.options_group.glayout.addWidget(self.check_clear_border)
 
         self.btn_select_options_file = QPushButton("Select options yaml file")
-        self.options_group.glayout.addWidget(self.btn_select_options_file)
+        self.btn_select_options_file.setToolTip(("Select a yaml file containing special options for "
+            "the cellpose model eval segmentation function"))
+        self.options_group.glayout.addWidget(self.btn_select_options_file, 5, 0, 1, 1)
 
         self.property_options_group = VHGroup('Properties Options', orientation='G')
         self._options_tab_layout.addWidget(self.property_options_group.gbox)
