@@ -2,16 +2,9 @@ name: napari-serialcellpose
 display_name: serialcellpose
 contributions:
   commands:
-    - id: napari-serialcellpose.get_reader
-      python_name: napari_serialcellpose._reader:napari_get_reader
-      title: Open data with serialcellpose 
     - id: napari-serialcellpose.make_qwidget
       python_name: napari_serialcellpose.serial_widget:SerialWidget
-      title: Make example QWidget
-  readers:
-    - command: napari-serialcellpose.get_reader
-      accepts_directories: false
-      filename_patterns: ['*.npy']  
+      title: Make example QWidget 
   widgets:
     - command: napari-serialcellpose.make_qwidget
       display_name: Serial Widget
