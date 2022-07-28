@@ -34,6 +34,7 @@ class SerialWidget(QWidget):
         self.output_folder = None
         self.props_table = None
         self.allprops = None
+        self.options_file_path = None
 
         self.main_layout = QVBoxLayout()
         self.setLayout(self.main_layout)
@@ -61,7 +62,7 @@ class SerialWidget(QWidget):
 
         # summary tab
         self.summary = QWidget()
-        self._summary_layout = QVBoxLayout()
+        self._summary_layout = QGridLayout()# QVBoxLayout()
         self.summary.setLayout(self._summary_layout)
         self.tabs.addTab(self.summary, 'Summary')
 
@@ -100,7 +101,7 @@ class SerialWidget(QWidget):
         self.run_group.glayout.addWidget(self.check_usegpu)
 
         self._options_tab_layout.setAlignment(Qt.AlignTop)
-        self.options_group = VHGroup('Options', orientation='G')
+        self.options_group = VHGroup('Segmentation Options', orientation='G')
         self._options_tab_layout.addWidget(self.options_group.gbox)
 
         self.options_group.glayout.addWidget(QLabel("Batch size"), 0, 0, 1, 1)
@@ -130,26 +131,52 @@ class SerialWidget(QWidget):
 
         self.check_clear_border = QCheckBox('Clear labels on border')
         self.check_clear_border.setChecked(True)
-        self.options_group.glayout.addWidget(self.check_clear_border) 
+        self.options_group.glayout.addWidget(self.check_clear_border)
 
+        self.btn_select_options_file = QPushButton("Select options yaml file")
+        self.btn_select_options_file.setToolTip(("Select a yaml file containing special options for "
+            "the cellpose model eval segmentation function"))
+        self.options_group.glayout.addWidget(self.btn_select_options_file, 5, 0, 1, 1)
+
+        self.property_options_group = VHGroup('Properties Options', orientation='G')
+        self._options_tab_layout.addWidget(self.property_options_group.gbox)
+
+        props_types = [
+            'size', 'intensity', 'perimeter', 'shape', 'position',
+            'moments']
+        self.check_props = {}
+        for ind, p in enumerate(props_types):
+            self.property_options_group.glayout.addWidget(QLabel(p), ind, 0, 1, 1)
+            self.check_props[p] = QCheckBox()
+            self.property_options_group.glayout.addWidget(self.check_props[p], ind, 1, 1, 1)
+        
+        self.property_options_group.glayout.addWidget(QLabel('Analysis channel'), ind+1, 0, 1, 1)
+        self.qcbox_channel_analysis = QComboBox()
+        self.property_options_group.glayout.addWidget(self.qcbox_channel_analysis, ind+1,1,1,1)
+        
         self.mainoptions_group = VHGroup('Main options', orientation='G')
         self._segmentation_layout.addWidget(self.mainoptions_group.gbox)
 
-        self.qcbox_channel_to_segment = QComboBox()
         self.mainoptions_group.glayout.addWidget(QLabel('Channel to segment'), 0, 0, 1, 1)
+        self.qcbox_channel_to_segment = QComboBox()
         self.mainoptions_group.glayout.addWidget(self.qcbox_channel_to_segment, 0,1,1,1)
         self.mainoptions_group.glayout.addWidget(QLabel('Helper channel'), 1, 0, 1, 1)
         self.qcbox_channel_helper = QComboBox()
         self.mainoptions_group.glayout.addWidget(self.qcbox_channel_helper, 1,1,1,1)
         self.diameter_label = QLabel("Diameter", visible=False)
-        self.mainoptions_group.glayout.addWidget(self.diameter_label, 2, 0, 1, 1)
+        self.mainoptions_group.glayout.addWidget(self.diameter_label, 3, 0, 1, 1)
         self.spinbox_diameter = QSpinBox(visible=False)
         self.spinbox_diameter.setValue(30)
         self.spinbox_diameter.setMaximum(1000)
-        self.mainoptions_group.glayout.addWidget(self.spinbox_diameter, 2, 1, 1, 1)
+        self.mainoptions_group.glayout.addWidget(self.spinbox_diameter, 3, 1, 1, 1)
 
         self.plot_group = VHGroup('Plots')
         self._properties_layout.addWidget(self.plot_group.gbox)
+
+        self.props_to_plot1 = QComboBox()
+        self.props_to_plot2 = QComboBox()
+        self.plot_group.glayout.addWidget(self.props_to_plot1)
+        self.plot_group.glayout.addWidget(self.props_to_plot2)
 
         self.sc = MplCanvas(self, row=1, col=2, width=6, height=4, dpi=100)
         self.toolbar = NavigationToolbar(self.sc, self)
@@ -158,13 +185,28 @@ class SerialWidget(QWidget):
 
         self.sc_sum = MplCanvas(self, row=1, col=2, width=6, height=4, dpi=100)
         self.toolbar_sum = NavigationToolbar(self.sc_sum, self)
-        self._summary_layout.addWidget(self.toolbar_sum)
-        self._summary_layout.addWidget(self.sc_sum)
+        self._summary_layout.addWidget(self.toolbar_sum, 0, 0, 1, 2)
+        self._summary_layout.addWidget(self.sc_sum, 1, 0, 1, 2)
         self.btn_load_summary = QPushButton("Load summary")
-        self._summary_layout.addWidget(self.btn_load_summary)
+        self._summary_layout.addWidget(self.btn_load_summary, 2, 0, 1, 2)
 
-        self.eccentricity_slider = magicgui.widgets.FloatSlider(min=0, max=1, step=0.01, value=1)
-        self._summary_layout.addWidget(self.eccentricity_slider.native)
+        self.summary_props_to_plot1 = QComboBox()
+        self.summary_props_to_plot2 = QComboBox()
+        self._summary_layout.addWidget(QLabel('Property 1'), 3, 0, 1, 1)
+        self._summary_layout.addWidget(self.summary_props_to_plot1, 3, 1, 1, 1)
+        self._summary_layout.addWidget(QLabel('Property 1'), 4, 0, 1, 1)
+        self._summary_layout.addWidget(self.summary_props_to_plot2, 4, 1, 1, 1)
+
+        self._summary_layout.addWidget(QLabel('Filtering property'), 5, 0, 1, 1)
+        self.choose_filtering_prop = QComboBox()
+        self._summary_layout.addWidget(self.choose_filtering_prop, 5, 1, 1, 1)
+
+        self._summary_layout.addWidget(QLabel('Filtering min'), 6, 0, 1, 1)
+        self.filterprop_min_slider = magicgui.widgets.FloatSlider(min=0, max=1, step=0.01, value=1)
+        self._summary_layout.addWidget(self.filterprop_min_slider.native, 6, 1, 1, 1)
+        self._summary_layout.addWidget(QLabel('Filtering min'), 7, 0, 1, 1)
+        self.filterprop_max_slider = magicgui.widgets.FloatSlider(min=0, max=1, step=0.01, value=1)
+        self._summary_layout.addWidget(self.filterprop_max_slider.native, 7, 1, 1, 1)
 
         self.add_connections()
 
@@ -173,13 +215,20 @@ class SerialWidget(QWidget):
 
         self.btn_select_file_folder.clicked.connect(self._on_click_select_file_folder)
         self.btn_select_cellpose_model.clicked.connect(self._on_click_select_cellpose_model)
+        self.btn_select_options_file.clicked.connect(self._on_click_select_options_file)
         self.btn_select_output_folder.clicked.connect(self._on_click_select_output_folder)
         self.file_list.currentItemChanged.connect(self._on_select_file)
         self.btn_run_on_current.clicked.connect(self._on_click_run_on_current)
         self.btn_run_on_folder.clicked.connect(self._on_click_run_on_folder)
         self.qcbox_model_choice.currentTextChanged.connect(self._on_change_modeltype)
         self.btn_load_summary.clicked.connect(self._on_click_load_summary)
-        self.eccentricity_slider.changed.connect(self.update_eccentricity)
+        self.filterprop_min_slider.changed.connect(self.update_filterprop)
+        self.filterprop_max_slider.changed.connect(self.update_filterprop)
+        self.props_to_plot1.currentIndexChanged.connect(self._on_choose_props_to_plot)
+        self.props_to_plot2.currentIndexChanged.connect(self._on_choose_props_to_plot)
+        self.summary_props_to_plot1.currentIndexChanged.connect(self.update_filterprop)
+        self.summary_props_to_plot2.currentIndexChanged.connect(self.update_filterprop)
+        self.choose_filtering_prop.currentIndexChanged.connect(self._on_update_filtering_sliders)
         self.viewer.layers.events.connect(self._on_change_layers)
 
     def open_file(self):
@@ -196,7 +245,7 @@ class SerialWidget(QWidget):
         image_name = self.file_list.currentItem().text()
         image_path = self.file_list.folder_path.joinpath(image_name)
 
-        self.viewer.open(image_path)
+        self.viewer.open(image_path, plugin='napari-aicsimageio')
 
         if self.output_folder is not None:
             mask_path = Path(self.output_folder).joinpath(image_path.stem+'_mask.tif')
@@ -204,7 +253,8 @@ class SerialWidget(QWidget):
                 mask = skimage.io.imread(mask_path)
                 self.viewer.add_labels(mask, name='mask')
                 props = load_props(self.output_folder, image_name)
-                self.add_table_props(props)
+                if props is not None:
+                    self.add_table_props(props)
 
         return True
 
@@ -230,6 +280,11 @@ class SerialWidget(QWidget):
         if not success:
             return False
 
+    def _on_click_select_options_file(self):
+        """Interactively select cellpose model"""
+
+        self.options_file_path = QFileDialog.getOpenFileName(self, "Select options file")[0]
+
     def _on_click_run_on_current(self):
         """Run cellpose on current image"""
 
@@ -240,7 +295,8 @@ class SerialWidget(QWidget):
         
         self.cellpose_model, diameter = self.get_cellpose_model(model_type=model_type)
         
-        channel_to_segment, channel_helper = self.get_channels_to_use()
+        channel_to_segment, channel_helper, channel_analysis = self.get_channels_to_use()
+        reg_props = [k for k in self.check_props.keys() if self.check_props[k].isChecked()]
 
         # run cellpose
         segmented = run_cellpose(
@@ -253,6 +309,9 @@ class SerialWidget(QWidget):
             clear_border=self.check_clear_border.isChecked(),
             channel_to_segment=channel_to_segment,
             channel_helper=channel_helper,
+            channel_measure=channel_analysis,
+            properties=reg_props,
+            options_file=self.options_file_path
         )
         self.viewer.add_labels(segmented, name='mask')
         if self.output_folder is not None:
@@ -272,8 +331,10 @@ class SerialWidget(QWidget):
         n = self.spinbox_batch_size.value()
         file_list_partition = [file_list[i:i + n] for i in range(0, len(file_list), n)]
 
-        channel_to_segment, channel_helper = self.get_channels_to_use()
         self.cellpose_model, diameter = self.get_cellpose_model(model_type=model_type)
+
+        channel_to_segment, channel_helper, channel_analysis = self.get_channels_to_use()
+        reg_props = [k for k in self.check_props.keys() if self.check_props[k].isChecked()]
 
         for batch in file_list_partition:
             run_cellpose(
@@ -285,8 +346,13 @@ class SerialWidget(QWidget):
                 cellprob_threshold=self.cellprob_threshold.value(),
                 clear_border=self.check_clear_border.isChecked(),
                 channel_to_segment=channel_to_segment,
-                channel_helper=channel_helper
+                channel_helper=channel_helper,
+                channel_measure=channel_analysis,
+                properties=reg_props,
+                options_file=self.options_file_path
             )
+
+        self._on_click_load_summary()
 
     def get_channels_to_use(self):
         """Translate selected channels in QCombox into indices.
@@ -295,13 +361,15 @@ class SerialWidget(QWidget):
         
         channel_to_segment = 0
         channel_helper = 0
+        channel_analysis = None
         if self.qcbox_channel_to_segment.currentText() != 'None':
-            print(f'self.qcbox_channel_to_segment.currentIndex(): {self.qcbox_channel_to_segment.currentIndex()}')
             channel_to_segment = self.qcbox_channel_to_segment.currentIndex()
         if self.qcbox_channel_helper.currentText() != 'None':
             channel_helper = self.qcbox_channel_helper.currentIndex()
+        if self.qcbox_channel_analysis.currentText() != 'None':
+            channel_analysis = self.qcbox_channel_analysis.currentIndex()-1
         
-        return channel_to_segment, channel_helper
+        return channel_to_segment, channel_helper, channel_analysis
 
     def output_and_model_check(self, choose_output=True):
         """Check if output folder and model are set"""
@@ -323,7 +391,7 @@ class SerialWidget(QWidget):
                 gpu=self.check_usegpu.isChecked(),
                 pretrained_model=self.cellpose_model_path)
         else:
-            cellpose_model = models.Cellpose(
+            cellpose_model = models.CellposeModel(
                 gpu=self.check_usegpu.isChecked(),
                 model_type=model_type)
             diameter = self.spinbox_diameter.value()
@@ -331,24 +399,43 @@ class SerialWidget(QWidget):
         return cellpose_model, diameter
 
     def _on_change_layers(self):
+        """Update layers lists in comboxes when layer is added or removed"""
 
         self.qcbox_channel_to_segment.clear()
         self.qcbox_channel_to_segment.addItems(['None']+[x.name for x in self.viewer.layers if isinstance(x, Image)])
         self.qcbox_channel_helper.clear()
         self.qcbox_channel_helper.addItems(['None']+[x.name for x in self.viewer.layers if isinstance(x, Image)])
+        self.qcbox_channel_analysis.clear()
+        self.qcbox_channel_analysis.addItems(['None']+[x.name for x in self.viewer.layers if isinstance(x, Image)])
 
     def _on_click_load_summary(self):
         """Load summary from folder"""
 
         self.allprops = load_allprops(self.output_folder)
-        props = self.allprops[self.allprops.eccentricity < self.eccentricity_slider.value]
-        prop_names = ['eccentricity', 'feret_diameter_max']
-        for i in range(len(prop_names)):
-            self.sc_sum.ax[0,i].clear()
-            self.sc_sum.ax[0,i].hist(props[prop_names[i]], rwidth=0.85)
-            self.sc_sum.ax[0,i].figure.canvas.draw()
-            self.sc_sum.ax[0,i].tick_params(colors='black',labelsize=12)
-            self.sc_sum.ax[0,i].set_title(prop_names[i], fontsize=15, color='black')
+        prop_names = list(self.allprops.columns)
+        self.choose_filtering_prop.addItems(prop_names)
+        self.summary_props_to_plot1.addItems(prop_names)
+        self.summary_props_to_plot2.addItems(prop_names)
+        self.choose_filtering_prop.setCurrentIndex(0)
+
+        filtering_props = self.choose_filtering_prop.currentText()
+        if filtering_props != '':
+            props = self.allprops[
+                (self.allprops[filtering_props] < self.filterprop_max_slider.value) &
+                (self.allprops[filtering_props] > self.filterprop_min_slider.value)
+            ]
+            prop_names = []
+            if self.summary_props_to_plot1.currentText() != '':
+                prop_names.append(self.summary_props_to_plot1.currentText())
+            if self.summary_props_to_plot2.currentText() != '':
+                prop_names.append(self.summary_props_to_plot2.currentText())
+
+            for ind, p in enumerate(prop_names):
+                self.sc_sum.ax[0,ind].clear()
+                self.sc_sum.ax[0,ind].hist(props[p], rwidth=0.85)
+                self.sc_sum.ax[0,ind].figure.canvas.draw()
+                self.sc_sum.ax[0,ind].tick_params(colors='black',labelsize=12)
+                self.sc_sum.ax[0,ind].set_title(p, fontsize=15, color='black')
 
     def _on_change_modeltype(self):
         "if selecting non-custom model, show diameter box"
@@ -371,32 +458,75 @@ class SerialWidget(QWidget):
             self.props_table._layer = self.viewer.layers['mask'] 
             self.props_table.update_content()
 
-        #self.sc.axes.clear()       
-        #self.sc.axes.hist(props['feret_diameter_max'], rwidth=0.85)
-        #self.sc.axes.figure.canvas.draw()
-
-        prop_names = ['eccentricity', 'feret_diameter_max']
-        for i in range(len(prop_names)):
+        prop_names = list(self.props_table.get_content().keys())
+        self.props_to_plot1.addItems(prop_names)
+        self.props_to_plot2.addItems(prop_names)
+        for i in range(np.min([len(prop_names),1])):#range(len(prop_names)):
             self.sc.ax[0,i].clear()
             self.sc.ax[0,i].hist(props[prop_names[i]], rwidth=0.85)
             self.sc.ax[0,i].figure.canvas.draw()
             self.sc.ax[0,i].tick_params(colors='black',labelsize=12)
             self.sc.ax[0,i].set_title(prop_names[i], fontsize=15, color='black')
 
-    def update_eccentricity(self, vakue):
-        """Update eccentricity plot"""
+    def _on_choose_props_to_plot(self):
+        """Update histograms when selected properties are changed"""
+
+        prop_names = []
+        if self.props_to_plot1.currentText() != '':
+            prop_names.append(self.props_to_plot1.currentText())
+        if self.props_to_plot2.currentText() != '':
+            prop_names.append(self.props_to_plot2.currentText())
+
+        for ind, p in enumerate(prop_names):
+            self.sc.ax[0,ind].clear()
+            self.sc.ax[0,ind].hist(self.props_table.get_content()[p], rwidth=0.85)
+            self.sc.ax[0,ind].figure.canvas.draw()
+            self.sc.ax[0,ind].tick_params(colors='black',labelsize=12)
+            self.sc.ax[0,ind].set_title(p, fontsize=15, color='black')        
+
+    def _on_update_filtering_sliders(self):
+        """Update filtering sliders and display when filtering property is changed"""
+
+        if self.allprops is None:
+            self._on_click_load_summary()
+        filtering_props = self.choose_filtering_prop.currentText()
+        
+        if filtering_props!='':
+
+            min_val = self.allprops[filtering_props].min()
+            max_val = self.allprops[filtering_props].max()
+
+            self.filterprop_min_slider.min = min_val
+            self.filterprop_min_slider.max = max_val
+            self.filterprop_max_slider.min = min_val
+            self.filterprop_max_slider.max = max_val
+
+            self.update_filterprop()
+
+    def update_filterprop(self, value=None):
+        """Update filterprop plot"""
 
         if self.allprops is None:
             self._on_click_load_summary()
         else:
-            props = self.allprops[self.allprops.eccentricity < self.eccentricity_slider.value]
-            prop_names = ['eccentricity', 'feret_diameter_max']
-            for i in range(len(prop_names)):
-                self.sc_sum.ax[0,i].clear()
-                self.sc_sum.ax[0,i].hist(props[prop_names[i]], rwidth=0.85)
-                self.sc_sum.ax[0,i].figure.canvas.draw()
-                self.sc_sum.ax[0,i].tick_params(colors='black',labelsize=12)
-                self.sc_sum.ax[0,i].set_title(prop_names[i], fontsize=15, color='black')
+            filtering_props = self.choose_filtering_prop.currentText()
+            if filtering_props != '':
+                props = self.allprops[
+                    (self.allprops[filtering_props] < self.filterprop_max_slider.value) &
+                    (self.allprops[filtering_props] > self.filterprop_min_slider.value)
+                ]
+                prop_names = []
+                if self.summary_props_to_plot1.currentText() != '':
+                    prop_names.append(self.summary_props_to_plot1.currentText())
+                if self.summary_props_to_plot2.currentText() != '':
+                    prop_names.append(self.summary_props_to_plot2.currentText())
+
+                for ind, p in enumerate(prop_names):
+                    self.sc_sum.ax[0,ind].clear()
+                    self.sc_sum.ax[0,ind].hist(props[prop_names[ind]], rwidth=0.85)
+                    self.sc_sum.ax[0,ind].figure.canvas.draw()
+                    self.sc_sum.ax[0,ind].tick_params(colors='black',labelsize=12)
+                    self.sc_sum.ax[0,ind].set_title(prop_names[ind], fontsize=15, color='black')
 
 
 class VHGroup():

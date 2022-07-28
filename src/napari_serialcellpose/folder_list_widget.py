@@ -49,7 +49,8 @@ class FolderList(QListWidget):
         self.folder_path = path
         files = os.listdir(self.folder_path)  
         for f in files:
-            self.addItem(f)
+            if f[0] != '.':
+                self.addItem(f)
     
     def addFileEvent(self):
         pass
