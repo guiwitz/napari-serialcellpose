@@ -69,8 +69,8 @@ def test_analyse_single_image_save(make_napari_viewer):
     
     # set diameter and run segmentation
     widget.spinbox_diameter.setValue(60)
-    widget.qcbox_channel_to_segment.setCurrentIndex(1)
-    widget.qcbox_channel_helper.setCurrentIndex(2)
+    widget.qcbox_channel_to_segment.setCurrentIndex(2)
+    widget.qcbox_channel_helper.setCurrentIndex(1)
     widget.check_clear_border.setChecked(False)
 
     widget.check_props['size'].setChecked(True)
@@ -126,6 +126,8 @@ def test_analyse_multi_image_props(make_napari_viewer):
     widget.qcbox_model_choice.setCurrentIndex(
         [widget.qcbox_model_choice.itemText(i) for i in range(widget.qcbox_model_choice.count())].index('cyto2'))
     widget.spinbox_diameter.setValue(70)
+    widget.qcbox_channel_to_segment.setCurrentIndex(2)
+    widget.qcbox_channel_helper.setCurrentIndex(1)
     widget.check_props['size'].setChecked(True)
     widget.check_props['intensity'].setChecked(True)
     widget.qcbox_channel_analysis.setCurrentIndex(2)
@@ -168,3 +170,30 @@ def test_mask_loading(make_napari_viewer):
     # check that when selecting the first file, we get  2 channels and a mask
     widget.file_list.setCurrentRow(0)
     assert len(viewer.layers) == 3
+
+def test_analyse_single_image_options_yml(make_napari_viewer):
+    
+    viewer = make_napari_viewer()
+    widget = SerialWidget(viewer)
+
+    mypath = Path('src/napari_serialcellpose/_tests/data/single_file_multichannel')
+    yml_path = Path('src/napari_serialcellpose/_tests/my_options.yml')
+              
+    widget.file_list.update_from_path(mypath)
+    widget.file_list.setCurrentRow(0)
+    
+    # set diameter and run segmentation
+    widget.spinbox_diameter.setValue(70)
+
+    widget.qcbox_model_choice.setCurrentIndex(
+        [widget.qcbox_model_choice.itemText(i) for i in range(widget.qcbox_model_choice.count())].index('cyto2'))
+    widget.qcbox_channel_to_segment.setCurrentIndex(2)
+    widget.qcbox_channel_helper.setCurrentIndex(1)
+
+    # overwrite options from yml file
+    widget.options_file_path = yml_path
+
+    widget._on_click_run_on_current()
+
+    # check that because of small diameter from yml file, we get only 5 elements
+    assert viewer.layers[2].data.max() == 5
