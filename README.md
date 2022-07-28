@@ -34,13 +34,13 @@ In order to use a GPU:
 
 1. Uninstall the PyTorch version that gets installed by default with Cellpose:
 
-    pip uninstall torch
+        pip uninstall torch
 
 2. Make sure your have up-to-date drivers for your NVIDIA card installed.
 
 3. Re-install a GPU version of PyTorch via conda using a command that you can find [here](https://pytorch.org/get-started/locally/) (this takes care of the cuda toolkit, cudnn etc. so **no need to install manually anything more than the driver**). The command will look like this:
 
-    conda install pytorch torchvision cudatoolkit=11.3 -c pytorch
+        conda install pytorch torchvision cudatoolkit=11.3 -c pytorch
 
 ### Plugin Updates
 
