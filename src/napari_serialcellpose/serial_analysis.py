@@ -7,11 +7,12 @@ from napari_skimage_regionprops._regionprops import regionprops_table
 import pandas as pd
 import numpy as np
 from aicsimageio import AICSImage
+import yaml
 
 def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
                  diameter=None, flow_threshold=0.4, cellprob_threshold=0.0,
                  clear_border=True, channel_to_segment=0, channel_helper=0,
-                 channel_measure=None, properties=None):
+                 channel_measure=None, properties=None, options_file=None):
     """Run cellpose on image.
     
     Parameters
@@ -39,7 +40,8 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
         index of channel(s) in which to measure intensity
     properties = list of str, default None
         list of types of properties to compute. Any of 'intensity', 'perimeter', 'shape', 'position', 'moments'
-        
+    options_file: str or Path, default None
+        path to yaml options file for cellpose 
 
     Returns
     -------
@@ -82,11 +84,22 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
         if scaling_factor != 1:
             image[i] = image[i][::scaling_factor, ::scaling_factor]
     
+    # handle yaml options file
+    default_options = {'diameter': diameter, 'flow_threshold': flow_threshold, 'cellprob_threshold': cellprob_threshold}
+    options_yml = {}
+    if options_file is not None:
+        with open(options_file) as file:
+            options_yml = yaml.load(file, Loader=yaml.FullLoader)
+        list_of_cellpose_options = cellpose_model.eval.__code__.co_varnames
+        for k in options_yml.keys():
+            if k not in list_of_cellpose_options:
+                raise ValueError(f'options file contains key {k} which is not in cellpose model')
+    merged_options = {**default_options, **options_yml}
+
         
     cellpose_output = cellpose_model.eval(
-        image, channels=channels,
-        diameter=diameter, flow_threshold=flow_threshold,
-        cellprob_threshold=cellprob_threshold, channel_axis=0,
+        image, channels=channels, channel_axis=0,
+        **merged_options
     )
     cellpose_output = cellpose_output[0]
 
@@ -214,6 +227,8 @@ def load_allprops(output_path):
         props['name'] = p.stem
         all_props.append(props)
     all_props = pd.concat(all_props)
+
+    all_props.to_csv(output_path.joinpath('summary.csv'), index=False)
 
     return all_props
 

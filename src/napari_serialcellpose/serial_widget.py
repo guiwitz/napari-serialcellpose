@@ -34,6 +34,7 @@ class SerialWidget(QWidget):
         self.output_folder = None
         self.props_table = None
         self.allprops = None
+        self.options_file_path = None
 
         self.main_layout = QVBoxLayout()
         self.setLayout(self.main_layout)
@@ -132,6 +133,9 @@ class SerialWidget(QWidget):
         self.check_clear_border.setChecked(True)
         self.options_group.glayout.addWidget(self.check_clear_border)
 
+        self.btn_select_options_file = QPushButton("Select options yaml file")
+        self.options_group.glayout.addWidget(self.btn_select_options_file)
+
         self.property_options_group = VHGroup('Properties Options', orientation='G')
         self._options_tab_layout.addWidget(self.property_options_group.gbox)
 
@@ -209,6 +213,7 @@ class SerialWidget(QWidget):
 
         self.btn_select_file_folder.clicked.connect(self._on_click_select_file_folder)
         self.btn_select_cellpose_model.clicked.connect(self._on_click_select_cellpose_model)
+        self.btn_select_options_file.clicked.connect(self._on_click_select_options_file)
         self.btn_select_output_folder.clicked.connect(self._on_click_select_output_folder)
         self.file_list.currentItemChanged.connect(self._on_select_file)
         self.btn_run_on_current.clicked.connect(self._on_click_run_on_current)
@@ -273,6 +278,11 @@ class SerialWidget(QWidget):
         if not success:
             return False
 
+    def _on_click_select_options_file(self):
+        """Interactively select cellpose model"""
+
+        self.options_file_path = QFileDialog.getOpenFileName(self, "Select options file")[0]
+
     def _on_click_run_on_current(self):
         """Run cellpose on current image"""
 
@@ -298,7 +308,8 @@ class SerialWidget(QWidget):
             channel_to_segment=channel_to_segment,
             channel_helper=channel_helper,
             channel_measure=channel_analysis,
-            properties=reg_props
+            properties=reg_props,
+            options_file=self.options_file_path
         )
         self.viewer.add_labels(segmented, name='mask')
         if self.output_folder is not None:
@@ -335,8 +346,11 @@ class SerialWidget(QWidget):
                 channel_to_segment=channel_to_segment,
                 channel_helper=channel_helper,
                 channel_measure=channel_analysis,
-                properties=reg_props
+                properties=reg_props,
+                options_file=self.options_file_path
             )
+
+        self._on_click_load_summary()
 
     def get_channels_to_use(self):
         """Translate selected channels in QCombox into indices.
