@@ -7,9 +7,11 @@
 [![codecov](https://codecov.io/gh/guiwitz/napari-serialcellpose/branch/main/graph/badge.svg)](https://codecov.io/gh/guiwitz/napari-serialcellpose)
 [![napari hub](https://img.shields.io/endpoint?url=https://api.napari-hub.org/shields/napari-serialcellpose)](https://napari-hub.org/plugins/napari-serialcellpose)
 
-This napari plugin allows to segment all images within a folder using cellpose. The cellpose model can be either a custom model or an official cellpose model. In addition, a set of "region properties" can be visualized as histograms for each image or for the entire folder.
+This napari plugin allows you to segment single images or series of images using built-in or custom Cellpose models as well as to analyze the properties of these segmented regions ("region properties"). Properties can be visualized for a single image or a complete experiment in the form of histograms that can also be filtered (e.g. based on area size, mean intensity etc.) Thanks to the [napari-skimage-regionprops](https://github.com/haesleinhuepf/napari-skimage-regionprops) plugin, properties of segmented objects can be interactively explored at a single object level.
 
-This plugin uses the great [napari-skimage-regionprops](https://github.com/haesleinhuepf/napari-skimage-regionprops) plugin to show properties as interactive tables.
+## Main goal
+
+The main goal of this plugin is to simplify the classical image processing pipeline of image segmentation followed by region analysis via Cellpose. It allows to quickly get a quantification of a set of images without the need for any scripting.
 
 ## Installation
 
@@ -63,7 +65,7 @@ The main interface is shown below. The sequence of events should be the followin
 6. Select if you want to use a GPU or not.
 7. If you are using multi-channel images, you can specify which channel to segment and optionally which to use as "nuclei" channel to help cell segmentation.
 8. In case you are using one of the built-in models, you can set the estimated diameter of your objects.
-9. In the Options tab you will find a few more options for segmentation, including the two thresholds ```flow_threshold``` and ```cellprob_threshold```. You can also decide to discard objects touching the border.
+9. In the Options tab you will find a few more options for segmentation, including the two thresholds ```flow_threshold``` and ```cellprob_threshold```. You can also decide to discard objects touching the border. Using the ```Select options yml file``` you can select a ```.yml``` file which contains a list of additional options to pass to the ```eval``` method of the Cellpose model. **Note that options specified in the yml file will override options set in the GUI**. The file [my_options.yml](https://raw.githubusercontent.com/guiwitz/napari-serialcellpose/main/src/napari_serialcellpose/_tests/my_options.yml) is an example of such a file where for example the ```diameter``` (also available in the GUI) and ```resample``` (not available in the GUI) options are set. 
 
 <img src="https://github.com/guiwitz/napari-serialcellpose/raw/main/illustrations/napari_serialcellpose_gui1.png" alt="image" width="500">
 <img src="https://github.com/guiwitz/napari-serialcellpose/raw/main/illustrations/napari_serialcellpose_gui1b.png" alt="image" width="500">
@@ -73,7 +75,8 @@ The main interface is shown below. The sequence of events should be the followin
 10. After segmentation, properties of the objects can automatically be computed. You can select which properties should be computed in the Options tab. As defined in ```napari-skimage-regionprops``` properties are grouped by types. If you want to measure intensity properties such as mean intensity, you have to specify which channel (```Analysis channel```) you want to perform the measurement on.
 
 ### Output
-The results of the analysis are saved in the folder chosen in #2. The segmentation mask is saved with the same name as the original image with the suffix ```_mask.tif```. A table with properties is saved in the subfolder ```tables``` also with the same name as the image with the suffix ```props.csv```.
+
+The results of the analysis are saved in the folder chosen in #2. The segmentation mask is saved with the same name as the original image with the suffix ```_mask.tif```. A table with properties is saved in the subfolder ```tables``` also with the same name as the image with the suffix ```props.csv```. If you run the plugin on multiple files in a folder, a ```summary.csv``` file is also generated which compiles all the data.
 ## Usage: post-processing
 
 After the analysis is done, when you select an image, the corresponding segmentation mask is shown on top of the image as shown below. This also works for saved segmentations: in that case you just select a folder with data and the corresponding output folder.
