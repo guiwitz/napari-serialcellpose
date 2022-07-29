@@ -360,7 +360,7 @@ class SerialWidget(QWidget):
                 channel_measure=channel_analysis,
                 properties=reg_props,
                 options_file=self.options_file_path,
-                force_no_rgb=self.check_force_no_rgb.isChecked(),
+                force_no_rgb=self.check_no_rgb.isChecked(),
             )
 
         self._on_click_load_summary()
