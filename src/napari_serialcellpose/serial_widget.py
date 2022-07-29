@@ -138,6 +138,12 @@ class SerialWidget(QWidget):
             "the cellpose model eval segmentation function"))
         self.options_group.glayout.addWidget(self.btn_select_options_file, 5, 0, 1, 1)
 
+        self.check_no_rgb = QCheckBox("Do not treat as RGB")
+        self.check_no_rgb.setToolTip(("In case aicsimageio interprets your channels as being RGB, "
+            "force it to use the three images as channels"))
+        self.options_group.glayout.addWidget(self.check_no_rgb, 6, 0, 1, 1)
+
+
         self.property_options_group = VHGroup('Properties Options', orientation='G')
         self._options_tab_layout.addWidget(self.property_options_group.gbox)
 
@@ -245,7 +251,10 @@ class SerialWidget(QWidget):
         image_name = self.file_list.currentItem().text()
         image_path = self.file_list.folder_path.joinpath(image_name)
 
-        self.viewer.open(image_path, plugin='napari-aicsimageio')
+        if self.check_no_rgb.isChecked():
+            self.viewer.open(image_path, plugin='napari-aicsimageio', layer_type='image', rgb=False, channel_axis=2)
+        else:
+            self.viewer.open(image_path, plugin='napari-aicsimageio',layer_type='image')
 
         if self.output_folder is not None:
             mask_path = Path(self.output_folder).joinpath(image_path.stem+'_mask.tif')
@@ -311,7 +320,8 @@ class SerialWidget(QWidget):
             channel_helper=channel_helper,
             channel_measure=channel_analysis,
             properties=reg_props,
-            options_file=self.options_file_path
+            options_file=self.options_file_path,
+            force_no_rgb=self.check_no_rgb.isChecked(),
         )
         self.viewer.add_labels(segmented, name='mask')
         if self.output_folder is not None:
@@ -349,7 +359,8 @@ class SerialWidget(QWidget):
                 channel_helper=channel_helper,
                 channel_measure=channel_analysis,
                 properties=reg_props,
-                options_file=self.options_file_path
+                options_file=self.options_file_path,
+                force_no_rgb=self.check_force_no_rgb.isChecked(),
             )
 
         self._on_click_load_summary()
