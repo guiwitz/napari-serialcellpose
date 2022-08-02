@@ -69,13 +69,13 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
                 image = [x.get_image_data('SYX', S=[np.max([0,channel_to_segment-1])] , T=0, Z=0, C=0) for x in image_aics]
             else:
                 image = [x.get_image_data('SYX', S=[np.max([0,channel_to_segment-1]), np.max([0,channel_helper-1])] , T=0, Z=0, C=0) for x in image_aics]
-                channels = [0, 1]
+                channels = [1, 2]
         else:
             if channel_helper == 0:
                 image = [x.get_image_data('CYX', C=[np.max([0,channel_to_segment-1])] , T=0, Z=0) for x in image_aics]
             else:
                 image = [x.get_image_data('CYX', C=[np.max([0,channel_to_segment-1]), np.max([0,channel_helper-1])] , T=0, Z=0) for x in image_aics]
-                channels = [0, 1]
+                channels = [1, 2]
 
         image_measure=None
         if channel_measure is not None:
