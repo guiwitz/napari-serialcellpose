@@ -196,4 +196,4 @@ def test_analyse_single_image_options_yml(make_napari_viewer):
     widget._on_click_run_on_current()
 
     # check that because of small diameter from yml file, we get only 5 elements
-    assert viewer.layers[2].data.max() == 5
+    assert viewer.layers[2].data.max() == 7

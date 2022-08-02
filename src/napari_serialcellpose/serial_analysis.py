@@ -12,7 +12,7 @@ import yaml
 def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
                  diameter=None, flow_threshold=0.4, cellprob_threshold=0.0,
                  clear_border=True, channel_to_segment=0, channel_helper=0,
-                 channel_measure=None, properties=None, options_file=None):
+                 channel_measure=None, properties=None, options_file=None, force_no_rgb=False):
     """Run cellpose on image.
     
     Parameters
@@ -41,7 +41,9 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
     properties = list of str, default None
         list of types of properties to compute. Any of 'intensity', 'perimeter', 'shape', 'position', 'moments'
     options_file: str or Path, default None
-        path to yaml options file for cellpose 
+        path to yaml options file for cellpose
+    force_no_rgb: bool, default False
+        if image is RGB convert it to multi-channel
 
     Returns
     -------
@@ -57,20 +59,30 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
 
     channels = [0, 0]
     image_aics = [AICSImage(x) for x in image_path]
-    if len(image_aics[0].dims.shape) == 6:
+    if (len(image_aics[0].dims.shape) == 6) and (not force_no_rgb):
         image = [x.get_image_data('YXS', C=0, T=0, Z=0) for x in image_aics]
         is_rgb = True
+        image_measure = [None]*len(image)
     else:
-        if channel_helper == 0:
-            image = [x.get_image_data('CYX', C=[np.max([0,channel_to_segment-1])] , T=0, Z=0) for x in image_aics]
+        if force_no_rgb:
+            if channel_helper == 0:
+                image = [x.get_image_data('SYX', S=[np.max([0,channel_to_segment-1])] , T=0, Z=0, C=0) for x in image_aics]
+            else:
+                image = [x.get_image_data('SYX', S=[np.max([0,channel_to_segment-1]), np.max([0,channel_helper-1])] , T=0, Z=0, C=0) for x in image_aics]
+                channels = [1, 2]
         else:
-            image = [x.get_image_data('CYX', C=[np.max([0,channel_to_segment-1]), np.max([0,channel_helper-1])] , T=0, Z=0) for x in image_aics]
-            channels = [0, 1]
+            if channel_helper == 0:
+                image = [x.get_image_data('CYX', C=[np.max([0,channel_to_segment-1])] , T=0, Z=0) for x in image_aics]
+            else:
+                image = [x.get_image_data('CYX', C=[np.max([0,channel_to_segment-1]), np.max([0,channel_helper-1])] , T=0, Z=0) for x in image_aics]
+                channels = [1, 2]
 
-        is_rgb = False
         image_measure=None
         if channel_measure is not None:
-            image_measure = [x.get_image_data('YX', C=channel_measure, T=0, Z=0) for x in image_aics]
+            if force_no_rgb:
+                image_measure = [x.get_image_data('YX', S=channel_measure, T=0, Z=0, C=0) for x in image_aics]
+            else:
+                image_measure = [x.get_image_data('YX', C=channel_measure, T=0, Z=0) for x in image_aics]
         else:
             image_measure = [None]*len(image)
         is_rgb = False

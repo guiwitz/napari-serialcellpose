@@ -22,7 +22,7 @@ In order to use this plugin, whe highly recommend to create a specific environme
 Then activate it and install the plugin:
     
     conda activate serialcellpose
-    pip install git+https://github.com/guiwitz/napari-serialcellpose.git
+    pip install napari-serialcellpose
 
 ### Potential issue with PyTorch
 
@@ -49,7 +49,7 @@ In order to use a GPU:
 To update the plugin, you only need to activate the existing environment and install the new version:
 
     conda activate serialcellpose
-    pip install git+https://github.com/guiwitz/napari-serialcellpose.git -U
+    pip install napari-serialcellpose -U
 
 ## Usage: segmentation
 
