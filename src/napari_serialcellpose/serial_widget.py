@@ -119,6 +119,8 @@ class SerialWidget(QWidget):
         self.options_group.glayout.addWidget(self.flow_threshold_label, 3, 0, 1, 1)
         self.flow_threshold = QDoubleSpinBox()
         self.flow_threshold.setSingleStep(0.1)
+        self.flow_threshold.setMaximum(10)
+        self.flow_threshold.setMinimum(-10)
         self.flow_threshold.setValue(0.4)
         self.options_group.glayout.addWidget(self.flow_threshold, 3, 1, 1, 1)
 
@@ -126,6 +128,8 @@ class SerialWidget(QWidget):
         self.options_group.glayout.addWidget(self.cellprob_threshold_label, 4, 0, 1, 1)
         self.cellprob_threshold = QDoubleSpinBox()
         self.cellprob_threshold.setSingleStep(0.1)
+        self.cellprob_threshold.setMaximum(10)
+        self.cellprob_threshold.setMinimum(-10)
         self.cellprob_threshold.setValue(0.0)
         self.options_group.glayout.addWidget(self.cellprob_threshold, 4, 1, 1, 1)
 
