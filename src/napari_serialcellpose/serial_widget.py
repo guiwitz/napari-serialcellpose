@@ -310,6 +310,7 @@ class SerialWidget(QWidget):
         self.cellpose_model, diameter = self.get_cellpose_model(model_type=model_type)
         
         channel_to_segment, channel_helper, channel_analysis = self.get_channels_to_use()
+        channel_analysis_names = [x.text() for x in self.qcbox_channel_analysis.selectedItems()]
         reg_props = [k for k in self.check_props.keys() if self.check_props[k].isChecked()]
 
         # run cellpose
@@ -324,6 +325,7 @@ class SerialWidget(QWidget):
             channel_to_segment=channel_to_segment,
             channel_helper=channel_helper,
             channel_measure=channel_analysis,
+            channel_measure_names=channel_analysis_names,
             properties=reg_props,
             options_file=self.options_file_path,
             force_no_rgb=self.check_no_rgb.isChecked(),
@@ -353,6 +355,7 @@ class SerialWidget(QWidget):
         self.cellpose_model, diameter = self.get_cellpose_model(model_type=model_type)
 
         channel_to_segment, channel_helper, channel_analysis = self.get_channels_to_use()
+        channel_analysis_names = [x.text() for x in self.qcbox_channel_analysis.selectedItems()]
         reg_props = [k for k in self.check_props.keys() if self.check_props[k].isChecked()]
 
         for batch in file_list_partition:
@@ -367,6 +370,7 @@ class SerialWidget(QWidget):
                 channel_to_segment=channel_to_segment,
                 channel_helper=channel_helper,
                 channel_measure=channel_analysis,
+                channel_measure_names=channel_analysis_names,
                 properties=reg_props,
                 options_file=self.options_file_path,
                 force_no_rgb=self.check_no_rgb.isChecked(),

@@ -12,7 +12,8 @@ import yaml
 def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
                  diameter=None, flow_threshold=0.4, cellprob_threshold=0.0,
                  clear_border=True, channel_to_segment=0, channel_helper=0,
-                 channel_measure=None, properties=None, options_file=None, force_no_rgb=False):
+                 channel_measure=None, channel_measure_names=None, properties=None,
+                 options_file=None, force_no_rgb=False):
     """Run cellpose on image.
     
     Parameters
@@ -38,6 +39,8 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
         index of helper nucleus channel for models using both cell and nucleus channels
     channel_measure: int or list of int, default None
         index of channel(s) in which to measure intensity
+    channel_measure_names: list of str, default None
+        names of channel(s) in which to measure intensity
     properties = list of str, default None
         list of types of properties to compute. Any of 'intensity', 'perimeter', 'shape', 'position', 'moments'
     options_file: str or Path, default None
@@ -138,7 +141,8 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
                     intensity_image=im_m,
                     output_path=output_path,
                     image_name=p,
-                    properties=properties
+                    properties=properties,
+                    channel_names=channel_measure_names
                     )
 
         if output_path is not None:
@@ -149,7 +153,9 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
     return cellpose_output, props
 
 
-def compute_props(label_image, intensity_image, output_path=None, image_name=None, properties=None):
+def compute_props(
+    label_image, intensity_image, output_path=None,
+    image_name=None, properties=None, channel_names=None):
     """Compute properties of segmented image.
     
     Parameters
@@ -164,7 +170,8 @@ def compute_props(label_image, intensity_image, output_path=None, image_name=Non
         either path to image or image name
     properties = list of str, default None
         list of types of properties to compute. Any of 'intensity', 'perimeter', 'shape', 'position', 'moments'
-
+    channel_names: list of str, default None
+        names of channel(s) in which to measure intensity
     """
     
     if (image_name is not None) and (output_path is not None):
@@ -195,8 +202,15 @@ def compute_props(label_image, intensity_image, output_path=None, image_name=Non
         intensity_measure = sk_regionprops_table(
             label_image=label_image, intensity_image=intensity_image,
             properties=['max_intensity', 'mean_intensity', 'min_intensity'])
-
-    props = pd.concat([props, pd.DataFrame(intensity_measure)], axis=1)
+        intensity_measure = pd.DataFrame(intensity_measure)
+        if channel_names is not None:
+            for ind, c in enumerate(channel_names):
+                intensity_measure.rename(
+                    columns={
+                        f'mean_intensity-{ind}': f'mean_intensity-{c}',
+                        f'min_intensity-{ind}': f'min_intensity-{c}',
+                        f'max_intensity-{ind}': f'max_intensity-{c}'}, inplace=True)
+    props = pd.concat([props, intensity_measure], axis=1)
 
     if output_path is not None:
         props.to_csv(output_path.joinpath(image_name.stem+'_props.csv'), index=False)
