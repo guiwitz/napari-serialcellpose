@@ -1,6 +1,6 @@
 from qtpy.QtWidgets import (QWidget, QVBoxLayout,QFileDialog, QPushButton,
 QSpinBox, QDoubleSpinBox, QLabel, QGridLayout, QHBoxLayout, QGroupBox, QComboBox, QTabWidget,
-QCheckBox, QLayout)
+QCheckBox, QListWidget, QAbstractItemView)
 from qtpy.QtCore import Qt
 import magicgui.widgets
 from napari.layers import Image
@@ -161,7 +161,8 @@ class SerialWidget(QWidget):
             self.property_options_group.glayout.addWidget(self.check_props[p], ind, 1, 1, 1)
         
         self.property_options_group.glayout.addWidget(QLabel('Analysis channel'), ind+1, 0, 1, 1)
-        self.qcbox_channel_analysis = QComboBox()
+        self.qcbox_channel_analysis = QListWidget()
+        self.qcbox_channel_analysis.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.property_options_group.glayout.addWidget(self.qcbox_channel_analysis, ind+1,1,1,1)
         
         self.mainoptions_group = VHGroup('Main options', orientation='G')
@@ -312,7 +313,7 @@ class SerialWidget(QWidget):
         reg_props = [k for k in self.check_props.keys() if self.check_props[k].isChecked()]
 
         # run cellpose
-        segmented = run_cellpose(
+        segmented, props = run_cellpose(
             image_path=image_path,
             cellpose_model=self.cellpose_model,
             output_path=self.output_folder,
@@ -327,9 +328,12 @@ class SerialWidget(QWidget):
             options_file=self.options_file_path,
             force_no_rgb=self.check_no_rgb.isChecked(),
         )
+
+        self.viewer.layers.events.disconnect(self._on_change_layers)
         self.viewer.add_labels(segmented, name='mask')
-        if self.output_folder is not None:
-            props = load_props(self.output_folder, image_path)
+        self.viewer.layers.events.connect(self._on_change_layers)
+
+        if len(reg_props) > 0:
             self.add_table_props(props)
 
     def _on_click_run_on_folder(self):
@@ -341,6 +345,7 @@ class SerialWidget(QWidget):
         file_list = [self.file_list.item(x).text() for x in range(self.file_list.count())]
         file_list = [f for f in file_list if f[0] != '.']
         file_list = [self.file_list.folder_path.joinpath(x) for x in file_list]
+        file_list = [f for f in file_list if f.is_file()]
 
         n = self.spinbox_batch_size.value()
         file_list_partition = [file_list[i:i + n] for i in range(0, len(file_list), n)]
@@ -351,7 +356,7 @@ class SerialWidget(QWidget):
         reg_props = [k for k in self.check_props.keys() if self.check_props[k].isChecked()]
 
         for batch in file_list_partition:
-            run_cellpose(
+            _, _ = run_cellpose(
                 image_path=batch,
                 cellpose_model=self.cellpose_model,
                 output_path=self.output_folder,
@@ -381,8 +386,8 @@ class SerialWidget(QWidget):
             channel_to_segment = self.qcbox_channel_to_segment.currentIndex()
         if self.qcbox_channel_helper.currentText() != 'None':
             channel_helper = self.qcbox_channel_helper.currentIndex()
-        if self.qcbox_channel_analysis.currentText() != 'None':
-            channel_analysis = self.qcbox_channel_analysis.currentIndex()-1
+        if len(self.qcbox_channel_analysis.selectedItems()) > 0:
+            channel_analysis = [x.row() for x in self.qcbox_channel_analysis.selectedIndexes()]
         
         return channel_to_segment, channel_helper, channel_analysis
 
@@ -421,12 +426,15 @@ class SerialWidget(QWidget):
         self.qcbox_channel_helper.clear()
         self.qcbox_channel_helper.addItems(['None']+[x.name for x in self.viewer.layers if isinstance(x, Image)])
         self.qcbox_channel_analysis.clear()
-        self.qcbox_channel_analysis.addItems(['None']+[x.name for x in self.viewer.layers if isinstance(x, Image)])
+        self.qcbox_channel_analysis.addItems([x.name for x in self.viewer.layers if isinstance(x, Image)])
 
     def _on_click_load_summary(self):
         """Load summary from folder"""
 
         self.allprops = load_allprops(self.output_folder)
+        if self.allprops is None:
+            return
+            
         prop_names = list(self.allprops.columns)
         self.choose_filtering_prop.addItems(prop_names)
         self.summary_props_to_plot1.addItems(prop_names)
