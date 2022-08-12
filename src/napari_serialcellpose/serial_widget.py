@@ -4,6 +4,7 @@ QCheckBox, QLayout)
 from qtpy.QtCore import Qt
 import magicgui.widgets
 from napari.layers import Image
+from napari.qt import create_worker, thread_worker
 
 from .folder_list_widget import FolderList
 from .serial_analysis import run_cellpose, load_props, load_allprops
@@ -312,22 +313,27 @@ class SerialWidget(QWidget):
         reg_props = [k for k in self.check_props.keys() if self.check_props[k].isChecked()]
 
         # run cellpose
-        segmented = run_cellpose(
-            image_path=image_path,
-            cellpose_model=self.cellpose_model,
-            output_path=self.output_folder,
-            diameter=diameter,
-            flow_threshold=self.flow_threshold.value(),
-            cellprob_threshold=self.cellprob_threshold.value(),
-            clear_border=self.check_clear_border.isChecked(),
-            channel_to_segment=channel_to_segment,
-            channel_helper=channel_helper,
-            channel_measure=channel_analysis,
-            properties=reg_props,
-            options_file=self.options_file_path,
-            force_no_rgb=self.check_no_rgb.isChecked(),
-        )
-        self.viewer.add_labels(segmented, name='mask')
+        seg_worker = create_worker(run_cellpose,
+                image_path=image_path,
+                cellpose_model=self.cellpose_model,
+                output_path=self.output_folder,
+                diameter=diameter,
+                flow_threshold=self.flow_threshold.value(),
+                cellprob_threshold=self.cellprob_threshold.value(),
+                clear_border=self.check_clear_border.isChecked(),
+                channel_to_segment=channel_to_segment,
+                channel_helper=channel_helper,
+                channel_measure=channel_analysis,
+                properties=reg_props,
+                options_file=self.options_file_path,
+                force_no_rgb=self.check_no_rgb.isChecked(),
+                _progress=True
+            )
+        def get_seg_worker(labels):
+            self.viewer.add_labels(labels, name='mask')
+            
+        seg_worker.start()
+        seg_worker.returned.connect(get_seg_worker)
         if self.output_folder is not None:
             props = load_props(self.output_folder, image_path)
             self.add_table_props(props)
