@@ -2,7 +2,7 @@ from pathlib import Path
 import warnings
 import skimage.io
 import skimage.segmentation
-#from skimage.measure import regionprops_table
+from skimage.measure import regionprops_table as sk_regionprops_table
 from napari_skimage_regionprops._regionprops import regionprops_table
 import pandas as pd
 import numpy as np
@@ -12,7 +12,8 @@ import yaml
 def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
                  diameter=None, flow_threshold=0.4, cellprob_threshold=0.0,
                  clear_border=True, channel_to_segment=0, channel_helper=0,
-                 channel_measure=None, properties=None, options_file=None, force_no_rgb=False):
+                 channel_measure=None, channel_measure_names=None, properties=None,
+                 options_file=None, force_no_rgb=False):
     """Run cellpose on image.
     
     Parameters
@@ -38,6 +39,8 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
         index of helper nucleus channel for models using both cell and nucleus channels
     channel_measure: int or list of int, default None
         index of channel(s) in which to measure intensity
+    channel_measure_names: list of str, default None
+        names of channel(s) in which to measure intensity
     properties = list of str, default None
         list of types of properties to compute. Any of 'intensity', 'perimeter', 'shape', 'position', 'moments'
     options_file: str or Path, default None
@@ -49,6 +52,8 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
     -------
     cellpose_output : list of arrays
         list of segmented images
+    props : pandas dataframe
+        properties of segmented cells for the last analyzed image
     """
 
     if not isinstance(image_path, list):
@@ -64,15 +69,20 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
         is_rgb = True
         image_measure = [None]*len(image)
     else:
+        #!!! Note that there is a bug in aicsimageio that causes it to place the S dimension in the wrong place.
+        #!!! This is why currently we import S planes separately and stack them.
         if force_no_rgb:
             if channel_helper == 0:
-                image = [x.get_image_data('SYX', S=[np.max([0,channel_to_segment-1])] , T=0, Z=0, C=0) for x in image_aics]
+                image = [x.get_image_data('YX', S=np.max([0,channel_to_segment-1]) , T=0, Z=0, C=0) for x in image_aics]
             else:
-                image = [x.get_image_data('SYX', S=[np.max([0,channel_to_segment-1]), np.max([0,channel_helper-1])] , T=0, Z=0, C=0) for x in image_aics]
+                im1 = [x.get_image_data('YX', S=np.max([0,channel_to_segment-1]) , T=0, Z=0, C=0) for x in image_aics]
+                im2 = [x.get_image_data('YX', S=np.max([0,channel_helper-1]) , T=0, Z=0, C=0) for x in image_aics]
+                image = [np.stack([im1[i], im2[i]], axis=0) for i in range(len(im1))]
+                #image = [x.get_image_data('SYX', S=[np.max([0,channel_to_segment-1]), np.max([0,channel_helper-1])] , T=0, Z=0, C=0) for x in image_aics]
                 channels = [1, 2]
         else:
             if channel_helper == 0:
-                image = [x.get_image_data('CYX', C=[np.max([0,channel_to_segment-1])] , T=0, Z=0) for x in image_aics]
+                image = [x.get_image_data('YX', C=np.max([0,channel_to_segment-1]) , T=0, Z=0) for x in image_aics]
             else:
                 image = [x.get_image_data('CYX', C=[np.max([0,channel_to_segment-1]), np.max([0,channel_helper-1])] , T=0, Z=0) for x in image_aics]
                 channels = [1, 2]
@@ -80,9 +90,10 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
         image_measure=None
         if channel_measure is not None:
             if force_no_rgb:
-                image_measure = [x.get_image_data('YX', S=channel_measure, T=0, Z=0, C=0) for x in image_aics]
+                image_measure = [np.stack([x.get_image_data('YX', S=s, T=0, Z=0, C=0) for s in channel_measure], axis=2) for x in image_aics]
+                #image_measure = [x.get_image_data('YXS', S=channel_measure, T=0, Z=0, C=0) for x in image_aics]
             else:
-                image_measure = [x.get_image_data('YX', C=channel_measure, T=0, Z=0) for x in image_aics]
+                image_measure = [x.get_image_data('YXC', C=channel_measure, T=0, Z=0) for x in image_aics]
         else:
             image_measure = [None]*len(image)
         is_rgb = False
@@ -122,23 +133,29 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
     
     # save output
     for im, im_m, p in zip(cellpose_output, image_measure, image_path):
+        
+        props=None
+        if len(properties) > 0:
+            props = compute_props(
+                    label_image=im,
+                    intensity_image=im_m,
+                    output_path=output_path,
+                    image_name=p,
+                    properties=properties,
+                    channel_names=channel_measure_names
+                    )
+
         if output_path is not None:
             output_path = Path(output_path)
             save_path = output_path.joinpath(p.stem+'_mask.tif')
             skimage.io.imsave(save_path, im, check_contrast=False)
 
-            compute_props(
-                label_image=im,
-                intensity_image=im_m,
-                output_path=output_path,
-                image_name=p,
-                properties=properties
-                )
-
-    return cellpose_output
+    return cellpose_output, props
 
 
-def compute_props(label_image, intensity_image, output_path, image_name, properties=None):
+def compute_props(
+    label_image, intensity_image, output_path=None,
+    image_name=None, properties=None, channel_names=None):
     """Compute properties of segmented image.
     
     Parameters
@@ -153,13 +170,15 @@ def compute_props(label_image, intensity_image, output_path, image_name, propert
         either path to image or image name
     properties = list of str, default None
         list of types of properties to compute. Any of 'intensity', 'perimeter', 'shape', 'position', 'moments'
-
+    channel_names: list of str, default None
+        names of channel(s) in which to measure intensity
     """
     
-    image_name = Path(image_name)
-    output_path = Path(output_path).joinpath('tables')
-    if not output_path.exists():
-        output_path.mkdir(parents=True)
+    if (image_name is not None) and (output_path is not None):
+        image_name = Path(image_name)
+        output_path = Path(output_path).joinpath('tables')
+        if not output_path.exists():
+            output_path.mkdir(parents=True)
     
     if properties is None:
         properties = []
@@ -167,23 +186,36 @@ def compute_props(label_image, intensity_image, output_path, image_name, propert
     if intensity_image is None:
         if "intensity" in properties:
             warnings.warn("Computing intensity features but no intensity image provided. Result will be zero.")
-        intensity_image = np.zeros(label_image.shape)
+        intensity_image = np.zeros(label_image.shape)[:,:,np.newaxis]
         
     props = regionprops_table(
-        image=intensity_image, labels=label_image,
+        image=intensity_image[:,:,-1], labels=label_image,
         size='size' in properties,
-        intensity='intensity' in properties,
         perimeter='perimeter' in properties,
         shape='shape' in properties,
         position='position' in properties,
         moments='moments' in properties,
+        intensity=False,
         )
-        
-    #props['eccentricity'] = props['eccentricity'].round(2)
-    #props['feret_diameter_max'] = props['feret_diameter_max'].round(2)
-    #props['solidity'] = props['solidity'].round(2)
 
-    props.to_csv(output_path.joinpath(image_name.stem+'_props.csv'), index=False)
+    if 'intensity' in properties:
+        intensity_measure = sk_regionprops_table(
+            label_image=label_image, intensity_image=intensity_image,
+            properties=['max_intensity', 'mean_intensity', 'min_intensity'])
+        intensity_measure = pd.DataFrame(intensity_measure)
+        if channel_names is not None:
+            for ind, c in enumerate(channel_names):
+                intensity_measure.rename(
+                    columns={
+                        f'mean_intensity-{ind}': f'mean_intensity-{c}',
+                        f'min_intensity-{ind}': f'min_intensity-{c}',
+                        f'max_intensity-{ind}': f'max_intensity-{c}'}, inplace=True)
+        props = pd.concat([props, intensity_measure], axis=1)
+
+    if output_path is not None:
+        props.to_csv(output_path.joinpath(image_name.stem+'_props.csv'), index=False)
+
+    return props
 
 
 def load_props(output_path, image_name):
@@ -231,6 +263,8 @@ def load_allprops(output_path):
 
     # get file name
     output_path = Path(output_path).joinpath('tables')
+    if not output_path.exists():
+        return None
     table_names = list(output_path.glob('*_props.csv'))
     
     all_props = []
