@@ -210,7 +210,7 @@ def compute_props(
                         f'mean_intensity-{ind}': f'mean_intensity-{c}',
                         f'min_intensity-{ind}': f'min_intensity-{c}',
                         f'max_intensity-{ind}': f'max_intensity-{c}'}, inplace=True)
-    props = pd.concat([props, intensity_measure], axis=1)
+        props = pd.concat([props, intensity_measure], axis=1)
 
     if output_path is not None:
         props.to_csv(output_path.joinpath(image_name.stem+'_props.csv'), index=False)
