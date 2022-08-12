@@ -362,7 +362,7 @@ class SerialWidget(QWidget):
         @thread_worker(progress={'total': len(file_list_partition), 'desc': 'Running batch segmentation'})
         def run_batch(file_list_partition):
             for batch in file_list_partition:
-                run_cellpose(
+                yield run_cellpose(
                     image_path=batch,
                     cellpose_model=self.cellpose_model,
                     output_path=self.output_folder,
