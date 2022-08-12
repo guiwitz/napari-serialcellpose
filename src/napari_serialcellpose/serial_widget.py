@@ -5,6 +5,8 @@ from qtpy.QtCore import Qt
 import magicgui.widgets
 from napari.layers import Image
 from napari.qt import create_worker, thread_worker
+from napari.utils.notifications import show_info
+
 
 from .folder_list_widget import FolderList
 from .serial_analysis import run_cellpose, load_props, load_allprops
@@ -331,7 +333,8 @@ class SerialWidget(QWidget):
             )
         def get_seg_worker(labels):
             self.viewer.add_labels(labels, name='mask')
-            
+
+        show_info('Running Segmentation...')
         seg_worker.start()
         seg_worker.returned.connect(get_seg_worker)
         if self.output_folder is not None:
@@ -356,23 +359,28 @@ class SerialWidget(QWidget):
         channel_to_segment, channel_helper, channel_analysis = self.get_channels_to_use()
         reg_props = [k for k in self.check_props.keys() if self.check_props[k].isChecked()]
 
-        for batch in file_list_partition:
-            run_cellpose(
-                image_path=batch,
-                cellpose_model=self.cellpose_model,
-                output_path=self.output_folder,
-                diameter=diameter,
-                flow_threshold=self.flow_threshold.value(),
-                cellprob_threshold=self.cellprob_threshold.value(),
-                clear_border=self.check_clear_border.isChecked(),
-                channel_to_segment=channel_to_segment,
-                channel_helper=channel_helper,
-                channel_measure=channel_analysis,
-                properties=reg_props,
-                options_file=self.options_file_path,
-                force_no_rgb=self.check_no_rgb.isChecked(),
-            )
+        @thread_worker(progress={'total': len(file_list_partition), 'desc': 'Running batch segmentation'})
+        def run_batch(file_list_partition):
+            for batch in file_list_partition:
+                run_cellpose(
+                    image_path=batch,
+                    cellpose_model=self.cellpose_model,
+                    output_path=self.output_folder,
+                    diameter=diameter,
+                    flow_threshold=self.flow_threshold.value(),
+                    cellprob_threshold=self.cellprob_threshold.value(),
+                    clear_border=self.check_clear_border.isChecked(),
+                    channel_to_segment=channel_to_segment,
+                    channel_helper=channel_helper,
+                    channel_measure=channel_analysis,
+                    properties=reg_props,
+                    options_file=self.options_file_path,
+                    force_no_rgb=self.check_no_rgb.isChecked(),
+                )
 
+        show_info('Running Segmentation...')
+        batch_worker = run_batch(file_list_partition)
+        batch_worker.start()
         self._on_click_load_summary()
 
     def get_channels_to_use(self):
