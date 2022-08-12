@@ -333,10 +333,11 @@ class SerialWidget(QWidget):
 
         self.viewer.layers.events.disconnect(self._on_change_layers)
         self.viewer.add_labels(segmented, name='mask')
-        self.viewer.layers.events.connect(self._on_change_layers)
 
         if len(reg_props) > 0:
             self.add_table_props(props)
+        
+        self.viewer.layers.events.connect(self._on_change_layers)
 
     def _on_click_run_on_folder(self):
         """Run cellpose on all images in folder"""
