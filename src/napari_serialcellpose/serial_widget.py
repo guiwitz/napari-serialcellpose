@@ -526,8 +526,11 @@ class SerialWidget(QWidget):
 
             self.filterprop_min_slider.min = min_val
             self.filterprop_min_slider.max = max_val
+            self.filterprop_min_slider.value = min_val
+
             self.filterprop_max_slider.min = min_val
             self.filterprop_max_slider.max = max_val
+            self.filterprop_max_slider.value = max_val
 
             self.update_filterprop()
 
