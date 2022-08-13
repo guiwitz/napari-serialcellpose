@@ -240,7 +240,7 @@ class SerialWidget(QWidget):
         self.summary_props_to_plot1.currentIndexChanged.connect(self.update_filterprop)
         self.summary_props_to_plot2.currentIndexChanged.connect(self.update_filterprop)
         self.choose_filtering_prop.currentIndexChanged.connect(self._on_update_filtering_sliders)
-        self.viewer.layers.events.connect(self._on_change_layers)
+        self.viewer.layers.events.inserted.connect(self._on_change_layers)
 
     def open_file(self):
         """Open file selected in list. Returns True if file was opened."""
@@ -331,13 +331,13 @@ class SerialWidget(QWidget):
             force_no_rgb=self.check_no_rgb.isChecked(),
         )
 
-        self.viewer.layers.events.disconnect(self._on_change_layers)
+        self.viewer.layers.events.inserted.disconnect(self._on_change_layers)
         self.viewer.add_labels(segmented, name='mask')
 
         if len(reg_props) > 0:
             self.add_table_props(props)
         
-        self.viewer.layers.events.connect(self._on_change_layers)
+        self.viewer.layers.events.inserted.connect(self._on_change_layers)
 
     def _on_click_run_on_folder(self):
         """Run cellpose on all images in folder"""
