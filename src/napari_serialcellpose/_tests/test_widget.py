@@ -75,7 +75,7 @@ def test_analyse_single_image_save(make_napari_viewer):
 
     widget.check_props['size'].setChecked(True)
     widget.check_props['intensity'].setChecked(True)
-    widget.qcbox_channel_analysis.setCurrentIndex(2)
+    widget.qcbox_channel_analysis.setCurrentRow(1)
 
     widget._on_click_run_on_current()
 
@@ -83,7 +83,7 @@ def test_analyse_single_image_save(make_napari_viewer):
     assert len(list(output_dir.joinpath('tables').glob('*_props.csv'))) == 1
 
 def test_analyse_multi_image(make_napari_viewer):
-
+    """Test analysis of multiple images in a folder. No properties are analyzed."""
     viewer = make_napari_viewer()
     widget = SerialWidget(viewer)
 
@@ -130,7 +130,7 @@ def test_analyse_multi_image_props(make_napari_viewer):
     widget.qcbox_channel_helper.setCurrentIndex(1)
     widget.check_props['size'].setChecked(True)
     widget.check_props['intensity'].setChecked(True)
-    widget.qcbox_channel_analysis.setCurrentIndex(2)
+    widget.qcbox_channel_analysis.setCurrentRow(1)
 
     widget._on_click_run_on_folder()
     assert len(list(output_dir.glob('*mask.tif'))) == 4
@@ -141,7 +141,44 @@ def test_analyse_multi_image_props(make_napari_viewer):
         Path(widget.file_list.currentItem().text()).stem + '_props.csv'
     )
     )
-    assert df.shape[1] == 9
+    # check number of columns in df
+    assert df.shape[1] == 8
+
+def test_analyse_multichannels(make_napari_viewer):
+    """Test that multiple channels can be used for intensity measurements"""
+    viewer = make_napari_viewer()
+    widget = SerialWidget(viewer)
+
+    mypath = Path('src/napari_serialcellpose/_tests/data/single_file_multichannel/')
+    output_dir = Path('src/napari_serialcellpose/_tests/data/analyzed_single_multichannelprops')
+    if output_dir.exists():
+        shutil.rmtree(output_dir)
+    output_dir.mkdir(exist_ok=True)
+
+    widget.file_list.update_from_path(mypath)
+    widget.output_folder = output_dir
+    widget.file_list.setCurrentRow(0)
+
+    widget.qcbox_model_choice.setCurrentIndex(
+        [widget.qcbox_model_choice.itemText(i) for i in range(widget.qcbox_model_choice.count())].index('cyto2'))
+    widget.spinbox_diameter.setValue(70)
+    widget.qcbox_channel_to_segment.setCurrentIndex(2)
+    widget.qcbox_channel_helper.setCurrentIndex(1)
+    widget.check_props['size'].setChecked(True)
+    widget.check_props['intensity'].setChecked(True)
+    widget.qcbox_channel_analysis.item(0).setSelected(True)
+    widget.qcbox_channel_analysis.item(1).setSelected(True)
+
+    widget._on_click_run_on_folder()
+
+    # check that the properties are correct
+    df = pd.read_csv(output_dir.joinpath(
+        'tables',
+        Path(widget.file_list.currentItem().text()).stem + '_props.csv'
+    )
+    )
+    # check number of columns in df
+    assert df.shape[1] == 11
 
 def test_mask_loading(make_napari_viewer):
 
