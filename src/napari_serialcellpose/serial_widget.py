@@ -316,6 +316,8 @@ class SerialWidget(QWidget):
         channel_analysis_names = [x.text() for x in self.qcbox_channel_analysis.selectedItems()]
         reg_props = [k for k in self.check_props.keys() if self.check_props[k].isChecked()]
 
+        self.viewer.layers.events.inserted.disconnect(self._on_change_layers)
+
         # run cellpose
         seg_worker = create_worker(run_cellpose,
                 image_path=image_path,
@@ -334,15 +336,16 @@ class SerialWidget(QWidget):
                 force_no_rgb=self.check_no_rgb.isChecked(),
                 _progress=True
             )
-        def get_seg_worker(labels):
-            self.viewer.add_labels(labels, name='mask')
+        def get_seg_worker(output):
+            self.viewer.add_labels(output[0], name='mask')
+            if len(reg_props) > 0:
+                self.add_table_props(output[1])
 
         show_info('Running Segmentation...')
         seg_worker.start()
         seg_worker.returned.connect(get_seg_worker)
 
-        self.viewer.layers.events.inserted.disconnect(self._on_change_layers)
-        self.viewer.add_labels(segmented, name='mask')
+        self.viewer.layers.events.inserted.connect(self._on_change_layers)
 
         if len(reg_props) > 0:
             self.add_table_props(props)
