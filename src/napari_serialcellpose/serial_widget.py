@@ -4,6 +4,9 @@ QCheckBox, QListWidget, QAbstractItemView)
 from qtpy.QtCore import Qt
 import magicgui.widgets
 from napari.layers import Image
+from napari.qt import create_worker, thread_worker
+from napari.utils.notifications import show_info
+
 
 from .folder_list_widget import FolderList
 from .serial_analysis import run_cellpose, load_props, load_allprops
@@ -313,31 +316,37 @@ class SerialWidget(QWidget):
         channel_analysis_names = [x.text() for x in self.qcbox_channel_analysis.selectedItems()]
         reg_props = [k for k in self.check_props.keys() if self.check_props[k].isChecked()]
 
-        # run cellpose
-        segmented, props = run_cellpose(
-            image_path=image_path,
-            cellpose_model=self.cellpose_model,
-            output_path=self.output_folder,
-            diameter=diameter,
-            flow_threshold=self.flow_threshold.value(),
-            cellprob_threshold=self.cellprob_threshold.value(),
-            clear_border=self.check_clear_border.isChecked(),
-            channel_to_segment=channel_to_segment,
-            channel_helper=channel_helper,
-            channel_measure=channel_analysis,
-            channel_measure_names=channel_analysis_names,
-            properties=reg_props,
-            options_file=self.options_file_path,
-            force_no_rgb=self.check_no_rgb.isChecked(),
-        )
-
         self.viewer.layers.events.inserted.disconnect(self._on_change_layers)
-        self.viewer.add_labels(segmented, name='mask')
 
-        if len(reg_props) > 0:
-            self.add_table_props(props)
+        # run cellpose
+        seg_worker = create_worker(run_cellpose,
+                image_path=image_path,
+                cellpose_model=self.cellpose_model,
+                output_path=self.output_folder,
+                diameter=diameter,
+                flow_threshold=self.flow_threshold.value(),
+                cellprob_threshold=self.cellprob_threshold.value(),
+                clear_border=self.check_clear_border.isChecked(),
+                channel_to_segment=channel_to_segment,
+                channel_helper=channel_helper,
+                channel_measure=channel_analysis,
+                channel_measure_names=channel_analysis_names,
+                properties=reg_props,
+                options_file=self.options_file_path,
+                force_no_rgb=self.check_no_rgb.isChecked(),
+                _progress=True
+            )
         
-        self.viewer.layers.events.inserted.connect(self._on_change_layers)
+        def get_seg_worker(output):
+            self.viewer.add_labels(output[0], name='mask')
+            if len(reg_props) > 0:
+                self.add_table_props(output[1])
+            self.viewer.layers.events.inserted.connect(self._on_change_layers)
+
+        show_info('Running Segmentation...')
+        seg_worker.start()
+        seg_worker.returned.connect(get_seg_worker)
+        
 
     def _on_click_run_on_folder(self):
         """Run cellpose on all images in folder"""
@@ -359,25 +368,31 @@ class SerialWidget(QWidget):
         channel_analysis_names = [x.text() for x in self.qcbox_channel_analysis.selectedItems()]
         reg_props = [k for k in self.check_props.keys() if self.check_props[k].isChecked()]
 
-        for batch in file_list_partition:
-            _, _ = run_cellpose(
-                image_path=batch,
-                cellpose_model=self.cellpose_model,
-                output_path=self.output_folder,
-                diameter=diameter,
-                flow_threshold=self.flow_threshold.value(),
-                cellprob_threshold=self.cellprob_threshold.value(),
-                clear_border=self.check_clear_border.isChecked(),
-                channel_to_segment=channel_to_segment,
-                channel_helper=channel_helper,
-                channel_measure=channel_analysis,
-                channel_measure_names=channel_analysis_names,
-                properties=reg_props,
-                options_file=self.options_file_path,
-                force_no_rgb=self.check_no_rgb.isChecked(),
-            )
+        @thread_worker(progress={'total': len(file_list_partition), 'desc': 'Running batch segmentation'})
+        def run_batch(file_list_partition):
+            for batch in file_list_partition:
+                yield run_cellpose(
+                    image_path=batch,
+                    cellpose_model=self.cellpose_model,
+                    output_path=self.output_folder,
+                    diameter=diameter,
+                    flow_threshold=self.flow_threshold.value(),
+                    cellprob_threshold=self.cellprob_threshold.value(),
+                    clear_border=self.check_clear_border.isChecked(),
+                    channel_to_segment=channel_to_segment,
+                    channel_helper=channel_helper,
+                    channel_measure=channel_analysis,
+                    channel_measure_names=channel_analysis_names,
+                    properties=reg_props,
+                    options_file=self.options_file_path,
+                    force_no_rgb=self.check_no_rgb.isChecked(),
+                )
 
-        self._on_click_load_summary()
+        show_info('Running Segmentation...')
+        batch_worker = run_batch(file_list_partition)
+        batch_worker.start()
+
+        batch_worker.returned.connect(self._on_click_load_summary)
 
     def get_channels_to_use(self):
         """Translate selected channels in QCombox into indices.
