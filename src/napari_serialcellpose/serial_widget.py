@@ -336,21 +336,17 @@ class SerialWidget(QWidget):
                 force_no_rgb=self.check_no_rgb.isChecked(),
                 _progress=True
             )
+        
         def get_seg_worker(output):
             self.viewer.add_labels(output[0], name='mask')
             if len(reg_props) > 0:
                 self.add_table_props(output[1])
+            self.viewer.layers.events.inserted.connect(self._on_change_layers)
 
         show_info('Running Segmentation...')
         seg_worker.start()
         seg_worker.returned.connect(get_seg_worker)
-
-        self.viewer.layers.events.inserted.connect(self._on_change_layers)
-
-        if len(reg_props) > 0:
-            self.add_table_props(props)
         
-        self.viewer.layers.events.inserted.connect(self._on_change_layers)
 
     def _on_click_run_on_folder(self):
         """Run cellpose on all images in folder"""
@@ -396,7 +392,7 @@ class SerialWidget(QWidget):
         batch_worker = run_batch(file_list_partition)
         batch_worker.start()
 
-        self._on_click_load_summary()
+        batch_worker.returned.connect(self._on_click_load_summary)
 
     def get_channels_to_use(self):
         """Translate selected channels in QCombox into indices.
