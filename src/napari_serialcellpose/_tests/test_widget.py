@@ -196,11 +196,8 @@ def test_mask_loading(qtbot, make_napari_viewer):
     widget = SerialWidget(viewer)
 
     mypath = Path('src/napari_serialcellpose/_tests/data/multifile/')
-    output_dir = Path('src/napari_serialcellpose/_tests/data/analyzed_multiple2')
-    # causes tests to hang, but here we don't need this check, we can check layers
-    #if output_dir.exists():
-    #      shutil.rmtree(output_dir)
-    #output_dir.mkdir(exist_ok=True)
+    output_dir = Path(tempfile.mkdtemp())
+
 
     widget.file_list.update_from_path(mypath)
     widget.output_folder = output_dir
