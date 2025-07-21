@@ -257,9 +257,9 @@ class SerialWidget(QWidget):
         image_path = self.file_list.folder_path.joinpath(image_name)
 
         if self.check_no_rgb.isChecked():
-            self.viewer.open(image_path, plugin='napari-aicsimageio', layer_type='image', rgb=False, channel_axis=2)
+            self.viewer.open(image_path, layer_type='image', rgb=False, channel_axis=2)
         else:
-            self.viewer.open(image_path, plugin='napari-aicsimageio',layer_type='image')
+            self.viewer.open(image_path, layer_type='image')
 
         if self.output_folder is not None:
             mask_path = Path(self.output_folder).joinpath(image_path.stem+'_mask.tif')

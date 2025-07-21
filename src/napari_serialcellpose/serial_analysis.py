@@ -6,7 +6,7 @@ from skimage.measure import regionprops_table as sk_regionprops_table
 from napari_skimage_regionprops._regionprops import regionprops_table
 import pandas as pd
 import numpy as np
-from aicsimageio import AICSImage
+from bioio import BioImage
 import yaml
 
 def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
@@ -63,9 +63,9 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
         properties = []
 
     channels = [0, 0]
-    image_aics = [AICSImage(x) for x in image_path]
-    if (len(image_aics[0].dims.shape) == 6) and (not force_no_rgb):
-        image = [x.get_image_data('YXS', C=0, T=0, Z=0) for x in image_aics]
+    bioimage = [BioImage(x) for x in image_path]
+    if (len(bioimage[0].dims.shape) == 6) and (not force_no_rgb):
+        image = [x.get_image_data('YXS', C=0, T=0, Z=0) for x in bioimage]
         is_rgb = True
         image_measure = [None]*len(image)
     else:
@@ -73,27 +73,27 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
         #!!! This is why currently we import S planes separately and stack them.
         if force_no_rgb:
             if channel_helper == 0:
-                image = [x.get_image_data('YX', S=np.max([0,channel_to_segment-1]) , T=0, Z=0, C=0) for x in image_aics]
+                image = [x.get_image_data('YX', S=np.max([0,channel_to_segment-1]) , T=0, Z=0, C=0) for x in bioimage]
             else:
-                im1 = [x.get_image_data('YX', S=np.max([0,channel_to_segment-1]) , T=0, Z=0, C=0) for x in image_aics]
-                im2 = [x.get_image_data('YX', S=np.max([0,channel_helper-1]) , T=0, Z=0, C=0) for x in image_aics]
+                im1 = [x.get_image_data('YX', S=np.max([0,channel_to_segment-1]) , T=0, Z=0, C=0) for x in bioimage]
+                im2 = [x.get_image_data('YX', S=np.max([0,channel_helper-1]) , T=0, Z=0, C=0) for x in bioimage]
                 image = [np.stack([im1[i], im2[i]], axis=0) for i in range(len(im1))]
-                #image = [x.get_image_data('SYX', S=[np.max([0,channel_to_segment-1]), np.max([0,channel_helper-1])] , T=0, Z=0, C=0) for x in image_aics]
+                #image = [x.get_image_data('SYX', S=[np.max([0,channel_to_segment-1]), np.max([0,channel_helper-1])] , T=0, Z=0, C=0) for x in bioimage]
                 channels = [1, 2]
         else:
             if channel_helper == 0:
-                image = [x.get_image_data('YX', C=np.max([0,channel_to_segment-1]) , T=0, Z=0) for x in image_aics]
+                image = [x.get_image_data('YX', C=np.max([0,channel_to_segment-1]) , T=0, Z=0) for x in bioimage]
             else:
-                image = [x.get_image_data('CYX', C=[np.max([0,channel_to_segment-1]), np.max([0,channel_helper-1])] , T=0, Z=0) for x in image_aics]
+                image = [x.get_image_data('CYX', C=[np.max([0,channel_to_segment-1]), np.max([0,channel_helper-1])] , T=0, Z=0) for x in bioimage]
                 channels = [1, 2]
 
         image_measure=None
         if channel_measure is not None:
             if force_no_rgb:
-                image_measure = [np.stack([x.get_image_data('YX', S=s, T=0, Z=0, C=0) for s in channel_measure], axis=2) for x in image_aics]
-                #image_measure = [x.get_image_data('YXS', S=channel_measure, T=0, Z=0, C=0) for x in image_aics]
+                image_measure = [np.stack([x.get_image_data('YX', S=s, T=0, Z=0, C=0) for s in channel_measure], axis=2) for x in bioimage]
+                #image_measure = [x.get_image_data('YXS', S=channel_measure, T=0, Z=0, C=0) for x in bioimage]
             else:
-                image_measure = [x.get_image_data('YXC', C=channel_measure, T=0, Z=0) for x in image_aics]
+                image_measure = [x.get_image_data('YXC', C=channel_measure, T=0, Z=0) for x in bioimage]
         else:
             image_measure = [None]*len(image)
         is_rgb = False
