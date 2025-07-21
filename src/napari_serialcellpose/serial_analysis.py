@@ -64,46 +64,71 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
 
     channels = [0, 0]
     bioimage = [BioImage(x) for x in image_path]
-    if (len(bioimage[0].dims.shape) == 6) and (not force_no_rgb):
-        image = [x.get_image_data('YXS', C=0, T=0, Z=0) for x in bioimage]
-        is_rgb = True
-        image_measure = [None]*len(image)
-    else:
-        #!!! Note that there is a bug in aicsimageio that causes it to place the S dimension in the wrong place.
-        #!!! This is why currently we import S planes separately and stack them.
-        if force_no_rgb:
-            if channel_helper == 0:
-                image = [x.get_image_data('YX', S=np.max([0,channel_to_segment-1]) , T=0, Z=0, C=0) for x in bioimage]
-            else:
-                im1 = [x.get_image_data('YX', S=np.max([0,channel_to_segment-1]) , T=0, Z=0, C=0) for x in bioimage]
-                im2 = [x.get_image_data('YX', S=np.max([0,channel_helper-1]) , T=0, Z=0, C=0) for x in bioimage]
-                image = [np.stack([im1[i], im2[i]], axis=0) for i in range(len(im1))]
-                #image = [x.get_image_data('SYX', S=[np.max([0,channel_to_segment-1]), np.max([0,channel_helper-1])] , T=0, Z=0, C=0) for x in bioimage]
-                channels = [1, 2]
-        else:
-            if channel_helper == 0:
-                image = [x.get_image_data('YX', C=np.max([0,channel_to_segment-1]) , T=0, Z=0) for x in bioimage]
-            else:
-                image = [x.get_image_data('CYX', C=[np.max([0,channel_to_segment-1]), np.max([0,channel_helper-1])] , T=0, Z=0) for x in bioimage]
-                channels = [1, 2]
+    img = bioimage[0]
+    image_measure = [None]*len(image_path)
 
-        image_measure=None
-        if channel_measure is not None:
-            if force_no_rgb:
-                image_measure = [np.stack([x.get_image_data('YX', S=s, T=0, Z=0, C=0) for s in channel_measure], axis=2) for x in bioimage]
-                #image_measure = [x.get_image_data('YXS', S=channel_measure, T=0, Z=0, C=0) for x in bioimage]
-            else:
-                image_measure = [x.get_image_data('YXC', C=channel_measure, T=0, Z=0) for x in bioimage]
+    if img.dims.C == 1:
+        if 'S' not in img.dims.order:
+            image = [bim.data[0,0,0] for bim in bioimage]
+            channels = [0, 0]
+            if channel_measure is not None:
+                image_measure = [bim.data[0,0,0][:,:,np.newaxis] for bim in bioimage]
+            
         else:
-            image_measure = [None]*len(image)
-        is_rgb = False
+            if img.dims.S == 1:
+                image = [bim.data[0,0,0] for bim in bioimage]
+                channels = [0, 0]
+                if channel_measure is not None:
+                    image_measure = [bim.data[0,0,0][:,:,np.newaxis] for bim in bioimage]
+            
+            else:
+                image = [bim.data[0,0,0] for bim in bioimage]
+                if force_no_rgb:
+                    if channel_helper == 0:
+                        channel_to_segment = [0, np.max([0,channel_to_segment-1])]
+                        image = [im[:,:,channel_to_segment-1] for im in image]
+                        channels = [0, 0]
+                    else:
+                        channel_to_segment = np.max([0,channel_to_segment-1])
+                        channel_helper = np.max([0,channel_helper-1])
+                        im1 = [image[i][:,:,channel_to_segment] for i in range(len(image))]
+                        im2 = [image[i][:,:,channel_helper] for i in range(len(image))]
+                        image = [np.stack([im1[i], im2[i]], axis=0) for i in range(len(im1))]
+                        channels = [1, 2]
+
+                    if channel_measure is not None:
+                        if isinstance(channel_measure, int):
+                            channel_measure = [channel_measure]
+                        #    image_measure = [bim.data[0,0,0,:,:,channel_measure] for bim in bioimage]
+                        #else:
+                        image_measure = [np.stack(bim.data[0,0,0,:,:,channel_measure], axis=2) for bim in bioimage]
+                else:
+                    image = [skimage.color.rgb2gray(im[:,:,0:3]) for im in image]
+                    image = [skimage.util.img_as_ubyte(im) for im in image]
+                    channels = [0, 0]
+                    if channel_measure is not None:
+                        image_measure = [x[:,:,np.newaxis] for x in image]
+                
+    elif img.dims.C > 1:
+        if channel_helper == 0:
+                
+            image = [x.data[0, np.max([0,channel_to_segment-1]), 0] for x in bioimage]
+            channels = [0, 0]
+        else:
+                
+            im1 = [x.data[0, np.max([0,channel_to_segment-1]), 0] for x in bioimage]
+            im2 = [x.data[0, np.max([0,channel_helper-1]), 0] for x in bioimage]
+            image = [np.stack([im1[i], im2[i]], axis=0) for i in range(len(im1))]
+            channels = [1, 2]
+
+        if channel_measure is not None:
+            if isinstance(channel_measure, int):
+                image_measure = [bim.data[0, channel_measure, 0] for bim in bioimage]
+            else:
+                image_measure = [bim.data[0, channel_measure, 0] for bim in bioimage]
+                image_measure = [np.moveaxis(im, 0, -1) for im in image_measure]
 
     for i in range(len(image)):
-        if image[i].ndim == 3:
-            if is_rgb:
-                image_gray = skimage.color.rgb2gray(image[i])
-                image_gray = skimage.util.img_as_ubyte(image_gray)
-                image[i] = image_gray
         if scaling_factor != 1:
             image[i] = image[i][::scaling_factor, ::scaling_factor]
     
@@ -133,7 +158,6 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
     
     # save output
     for im, im_m, p in zip(cellpose_output, image_measure, image_path):
-        
         props=None
         if len(properties) > 0:
             props = compute_props(
@@ -187,7 +211,7 @@ def compute_props(
         if "intensity" in properties:
             warnings.warn("Computing intensity features but no intensity image provided. Result will be zero.")
         intensity_image = np.zeros(label_image.shape)[:,:,np.newaxis]
-        
+
     props = regionprops_table(
         image=intensity_image[:,:,-1], labels=label_image,
         size='size' in properties,

@@ -13,6 +13,7 @@ import skimage.io
 import numpy as np
 from cellpose import models
 from napari_skimage_regionprops._table import TableWidget
+from bioio import BioImage
 
 import matplotlib
 matplotlib.use('Qt5Agg')
@@ -256,10 +257,21 @@ class SerialWidget(QWidget):
         image_name = self.file_list.currentItem().text()
         image_path = self.file_list.folder_path.joinpath(image_name)
 
-        if self.check_no_rgb.isChecked():
-            self.viewer.open(image_path, layer_type='image', rgb=False, channel_axis=2)
-        else:
-            self.viewer.open(image_path, layer_type='image')
+        img = BioImage(image_path)
+        if img.dims.C == 1:
+            if 'S' in img.dims.order:
+                if img.dims.S == 1:
+                    self.viewer.add_image(img.data[0,0,0], name=image_name)
+                else:
+                    if self.check_no_rgb.isChecked():
+                        self.viewer.add_image(img.data[0,0,0], channel_axis=2, name=image_name)
+                    else:
+                        self.viewer.add_image(img.data[0,0], rgb=True, name=image_name)
+            else:
+                self.viewer.add_image(img.data[0,0,0], name=image_name)
+        
+        elif img.dims.C > 1:
+            self.viewer.add_image(img.data[0,:,0], channel_axis=0, name=image_name)
 
         if self.output_folder is not None:
             mask_path = Path(self.output_folder).joinpath(image_path.stem+'_mask.tif')
@@ -310,6 +322,7 @@ class SerialWidget(QWidget):
         self.cellpose_model, diameter = self.get_cellpose_model(model_type=model_type)
         
         channel_to_segment, channel_helper, channel_analysis = self.get_channels_to_use()
+        print(f'Channels to segment: {channel_to_segment}, helper: {channel_helper}, analysis: {channel_analysis}')
         channel_analysis_names = [x.text() for x in self.qcbox_channel_analysis.selectedItems()]
         reg_props = [k for k in self.check_props.keys() if self.check_props[k].isChecked()]
 
