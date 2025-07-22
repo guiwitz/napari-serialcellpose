@@ -17,12 +17,20 @@ The main goal of this plugin is to simplify the classical image processing pipel
 
 In order to use this plugin, whe highly recommend to create a specific environment and to install the required software in it. You can create a conda environment using:
 
-    conda create -n serialcellpose python=3.8.5 napari -c conda-forge
+    conda create -n serialcellpose python=3.12 napari pyqt -c conda-forge
 
 Then activate it and install the plugin:
     
     conda activate serialcellpose
     pip install napari-serialcellpose
+
+Alternatively, you can install the plugin via the napari plugin manager.
+
+## Note on versions
+
+Versions older than 0.3.0 depend on the aicsimageio importer which is not supported anymore and which will likely lead to errors when trying to run the plugin. Version 0.3.0 moved to the [bioio](https://github.com/bioio-devs/bioio) importer and some improvements were made to the data handling but the core functionality is the same. **Version 0.3.0 is the last version that will support pre-SAM Cellpose models i.e. Cellpose=4.0. If you want to use Cellpose=4.0, please use version napari-serialcellpose=0.4.0 or later.** You can pick versions in the napari plugin manger or directly via pip e.g.:
+
+    pip install napari-serialcellpose==0.3.0
 
 ### Potential issue with PyTorch
 
@@ -55,11 +63,12 @@ To update the plugin, you only need to activate the existing environment and ins
 
 The main interface is shown below. The sequence of events should be the following:
 
-1. Select a folder containing images. The list of files within that folder will appear in the area above. You can also just drag and drop a folder or an image in that area. When selecting an image, it gets displayed in the viewer. Images are opened via [aicsimageio](https://allencellmodeling.github.io/aicsimageio/). You can use grayscale images, RGB images or multi-channel images. In the latter case, **make sure each channel opens as a separate layer when you open them using the napari-aicsimagio importer**.
+1. Select a folder containing images. The list of files within that folder will appear in the area above. You can also just drag and drop a folder or an image in that area. When selecting an image, it gets displayed in the viewer. Images are opened via [bioio](https://github.com/bioio-devs/bioio) but not all bioio plugins come pre-installed (only bioio-tifffile and bioio-imageio) so check the [plugin list](https://github.com/bioio-devs/bioio?tab=readme-ov-file#plug-in-registry) to open other file formats. You can use grayscale images, RGB images or multi-channel images. In the latter case, **make sure each channel opens as a separate layer when you open them**.
 2. If you want to save the segmentation and tables with properties, select a folder that will contain the output.
 3. Select the type of cellpose model.
 4. If you use a custom model, select its location.
 5. Run the analysis on the currently selected image or on all files in the folder.
+
 ### Options
 
 6. Select if you want to use a GPU or not.
@@ -77,6 +86,7 @@ The main interface is shown below. The sequence of events should be the followin
 ### Output
 
 The results of the analysis are saved in the folder chosen in #2. The segmentation mask is saved with the same name as the original image with the suffix ```_mask.tif```. A table with properties is saved in the subfolder ```tables``` also with the same name as the image with the suffix ```props.csv```. If you run the plugin on multiple files in a folder, a ```summary.csv``` file is also generated which compiles all the data.
+
 ## Usage: post-processing
 
 After the analysis is done, when you select an image, the corresponding segmentation mask is shown on top of the image as shown below. This also works for saved segmentations: in that case you just select a folder with data and the corresponding output folder.
