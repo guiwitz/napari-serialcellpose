@@ -20,6 +20,8 @@ matplotlib.use('Qt5Agg')
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
 
+from .utils import get_cp_version
+__cp_version__ = get_cp_version()
 
 class SerialWidget(QWidget):
     """
@@ -82,8 +84,12 @@ class SerialWidget(QWidget):
         self.folder_group.glayout.addWidget(self.btn_select_output_folder)
 
         self.qcbox_model_choice = QComboBox(visible=True)
-        self.qcbox_model_choice.addItems([
-            'custom', 'cyto', 'cyto2', 'nuclei', 'tissuenet'])
+        if __cp_version__ > 3:
+            self.qcbox_model_choice.addItems([
+                'custom', 'cellsam'])
+        else:
+            self.qcbox_model_choice.addItems([
+                'custom', 'cyto', 'cyto2', 'nuclei', 'tissuenet'])
         self.folder_group.glayout.addWidget(self.qcbox_model_choice)
 
         self.btn_select_cellpose_model = QPushButton("Select custom cellpose model file")
@@ -429,9 +435,14 @@ class SerialWidget(QWidget):
                 gpu=self.check_usegpu.isChecked(),
                 pretrained_model=self.cellpose_model_path)
         else:
-            cellpose_model = models.CellposeModel(
-                gpu=self.check_usegpu.isChecked(),
-                model_type=model_type)
+            if __cp_version__ < 4:
+                cellpose_model = models.CellposeModel(
+                    gpu=self.check_usegpu.isChecked(),
+                    model_type=model_type)
+            else:
+                cellpose_model = models.CellposeModel(
+                    gpu=self.check_usegpu.isChecked(),
+                    pretrained_model=model_type)
             diameter = self.spinbox_diameter.value()
         
         return cellpose_model, diameter
