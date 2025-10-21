@@ -4,6 +4,7 @@ import pandas as pd
 
 from pathlib import Path
 import shutil
+from qtpy.QtCore import Qt
 
 def test_load_single_image(make_napari_viewer):
     
@@ -73,8 +74,9 @@ def test_analyse_single_image_save(make_napari_viewer):
     widget.qcbox_channel_helper.setCurrentIndex(1)
     widget.check_clear_border.setChecked(False)
 
-    widget.check_props['size'].setChecked(True)
-    widget.check_props['intensity'].setChecked(True)
+    # set area and intensity_mean as selected from qlistwidget
+    widget.check_props.findItems('area', Qt.MatchExactly)[0].setSelected(True)
+    widget.check_props.findItems('intensity_mean', Qt.MatchExactly)[0].setSelected(True)
     widget.qcbox_channel_analysis.setCurrentRow(1)
 
     widget._on_click_run_on_current()
@@ -128,8 +130,8 @@ def test_analyse_multi_image_props(make_napari_viewer):
     widget.spinbox_diameter.setValue(70)
     widget.qcbox_channel_to_segment.setCurrentIndex(2)
     widget.qcbox_channel_helper.setCurrentIndex(1)
-    widget.check_props['size'].setChecked(True)
-    widget.check_props['intensity'].setChecked(True)
+    widget.check_props.findItems('area', Qt.MatchExactly)[0].setSelected(True)
+    widget.check_props.findItems('intensity_mean', Qt.MatchExactly)[0].setSelected(True)
     widget.qcbox_channel_analysis.setCurrentRow(1)
 
     widget._on_click_run_on_folder()
@@ -142,7 +144,7 @@ def test_analyse_multi_image_props(make_napari_viewer):
     )
     )
     # check number of columns in df
-    assert df.shape[1] == 8
+    assert df.shape[1] == 2
 
 def test_analyse_multichannels(make_napari_viewer):
     """Test that multiple channels can be used for intensity measurements"""
@@ -164,8 +166,8 @@ def test_analyse_multichannels(make_napari_viewer):
     widget.spinbox_diameter.setValue(70)
     widget.qcbox_channel_to_segment.setCurrentIndex(2)
     widget.qcbox_channel_helper.setCurrentIndex(1)
-    widget.check_props['size'].setChecked(True)
-    widget.check_props['intensity'].setChecked(True)
+    widget.check_props.findItems('area', Qt.MatchExactly)[0].setSelected(True)
+    widget.check_props.findItems('intensity_mean', Qt.MatchExactly)[0].setSelected(True)
     widget.qcbox_channel_analysis.item(0).setSelected(True)
     widget.qcbox_channel_analysis.item(1).setSelected(True)
 
@@ -178,7 +180,7 @@ def test_analyse_multichannels(make_napari_viewer):
     )
     )
     # check number of columns in df
-    assert df.shape[1] == 11
+    assert df.shape[1] == 3
 
 def test_mask_loading(make_napari_viewer):
 
