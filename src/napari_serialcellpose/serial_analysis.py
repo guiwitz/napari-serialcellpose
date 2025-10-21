@@ -9,6 +9,9 @@ import numpy as np
 from bioio import BioImage
 import yaml
 
+from .utils import get_cp_version
+__cp_version__ = get_cp_version()
+
 def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
                  diameter=None, flow_threshold=0.4, cellprob_threshold=0.0,
                  clear_border=True, channel_to_segment=0, channel_helper=0,
@@ -144,9 +147,12 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
                 raise ValueError(f'options file contains key {k} which is not in cellpose model')
     merged_options = {**default_options, **options_yml}
 
-        
+    if __cp_version__ > 3:
+        channel_axis = None
+    else:
+        channel_axis = 0
     cellpose_output = cellpose_model.eval(
-        image, channels=channels, channel_axis=0,
+        image, channels=channels, channel_axis=channel_axis,
         **merged_options
     )
     cellpose_output = cellpose_output[0]
