@@ -3,6 +3,7 @@ QSpinBox, QDoubleSpinBox, QLabel, QGridLayout, QHBoxLayout, QGroupBox, QComboBox
 QCheckBox, QListWidget, QAbstractItemView)
 from qtpy.QtCore import Qt
 import magicgui.widgets
+from magicgui.widgets import Table
 from napari.layers import Image
 
 from .folder_list_widget import FolderList
@@ -12,7 +13,6 @@ from pathlib import Path
 import skimage.io
 import numpy as np
 from cellpose import models
-from napari_skimage_regionprops._table import TableWidget
 from bioio import BioImage
 
 import matplotlib
@@ -171,6 +171,19 @@ class SerialWidget(QWidget):
         self.qcbox_channel_analysis = QListWidget()
         self.qcbox_channel_analysis.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.property_options_group.glayout.addWidget(self.qcbox_channel_analysis, ind+1,1,1,1)
+
+        '''from napari_skimage.skimage_regionprops_widget import regionprops_widget
+        self.regprops = regionprops_widget()
+        self.regprops.viewer = self.viewer
+        self.regprops.reset_choices()
+        self.viewer.layers.events.inserted.connect(self.regprops.reset_choices)
+        self.viewer.layers.events.removed.connect(self.regprops.reset_choices)
+        from skimage.measure._regionprops import PROPS
+        available_properties = set(PROPS.values())
+        self.regprops.properties._default_choices = available_properties
+        #self.property_options_group = VHGroup('Properties Options', orientation='G')
+        #self._options_tab_layout.addWidget(self.property_options_group.gbox)
+        self.property_options_group.glayout.addWidget(self.regprops.native, ind+2, 0, 1, 1)'''
         
         self.mainoptions_group = VHGroup('Main options', orientation='G')
         self._segmentation_layout.addWidget(self.mainoptions_group.gbox)
@@ -504,13 +517,16 @@ class SerialWidget(QWidget):
 
         self.viewer.layers['mask'].properties = props
         if self.props_table is None:
-            self.props_table = TableWidget(layer=self.viewer.layers['mask'])
-            self._properties_layout.addWidget(self.props_table)
-        else:
-            self.props_table._layer = self.viewer.layers['mask'] 
-            self.props_table.update_content()
+            self.props_table = Table(name="Results Table")
+            self._properties_layout.addWidget(self.props_table.native)
+            self.props_table.value = props
+            self.props_table.read_only = True
+            self.props_table.native.clicked.connect(self.clicked_table)
 
-        prop_names = list(self.props_table.get_content().keys())
+        else:
+            self.props_table.value = props
+
+        prop_names = self.props_table.column_headers#list(self.props_table.get_content().keys())
         self.props_to_plot1.addItems(prop_names)
         self.props_to_plot2.addItems(prop_names)
         for i in range(np.min([len(prop_names),1])):#range(len(prop_names)):
@@ -531,7 +547,7 @@ class SerialWidget(QWidget):
 
         for ind, p in enumerate(prop_names):
             self.sc.ax[0,ind].clear()
-            self.sc.ax[0,ind].hist(self.props_table.get_content()[p], rwidth=0.85)
+            self.sc.ax[0,ind].hist(self.props_table[p], rwidth=0.85)
             self.sc.ax[0,ind].figure.canvas.draw()
             self.sc.ax[0,ind].tick_params(colors='black',labelsize=12)
             self.sc.ax[0,ind].set_title(p, fontsize=15, color='black')        
@@ -557,6 +573,20 @@ class SerialWidget(QWidget):
             self.filterprop_max_slider.value = max_val
 
             self.update_filterprop()
+
+    def clicked_table(self, event):
+        """Highlight label selected in table"""
+
+        labels_layer = self.viewer.layers['mask']
+        row = self.props_table.native.currentRow()
+        if "label" in self.props_table.column_headers:
+            label = int(self.props_table["label"][row])
+        else:
+            # If the label column is not present, use the row index
+            # plus one to account for zero-based indexing
+            label = np.unique(labels_layer.value.data)[row+1]
+        labels_layer.selected_label = label
+
 
     def update_filterprop(self, value=None):
         """Update filterprop plot"""
