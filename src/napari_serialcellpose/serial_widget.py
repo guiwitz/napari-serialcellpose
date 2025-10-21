@@ -11,6 +11,7 @@ from .serial_analysis import run_cellpose, load_props, load_allprops
 
 from pathlib import Path
 import skimage.io
+from skimage.measure._regionprops import PROPS
 import numpy as np
 from cellpose import models
 from bioio import BioImage
@@ -161,16 +162,21 @@ class SerialWidget(QWidget):
         props_types = [
             'size', 'intensity', 'perimeter', 'shape', 'position',
             'moments']
-        self.check_props = {}
-        for ind, p in enumerate(props_types):
+        props_types = available_properties = set(PROPS.values())
+        self.check_props = QListWidget()#{}
+        self.check_props.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        for p in props_types:
+            self.check_props.addItem(p)
+        self.property_options_group.glayout.addWidget(self.check_props, 0, 1, 1, 1)
+        """for ind, p in enumerate(props_types):
             self.property_options_group.glayout.addWidget(QLabel(p), ind, 0, 1, 1)
             self.check_props[p] = QCheckBox()
-            self.property_options_group.glayout.addWidget(self.check_props[p], ind, 1, 1, 1)
+            self.property_options_group.glayout.addWidget(self.check_props[p], ind, 1, 1, 1)"""
         
-        self.property_options_group.glayout.addWidget(QLabel('Analysis channel'), ind+1, 0, 1, 1)
+        self.property_options_group.glayout.addWidget(QLabel('Analysis channel'), 1, 0, 1, 1)
         self.qcbox_channel_analysis = QListWidget()
         self.qcbox_channel_analysis.setSelectionMode(QAbstractItemView.ExtendedSelection)
-        self.property_options_group.glayout.addWidget(self.qcbox_channel_analysis, ind+1,1,1,1)
+        self.property_options_group.glayout.addWidget(self.qcbox_channel_analysis, 1,1,1,1)
 
         '''from napari_skimage.skimage_regionprops_widget import regionprops_widget
         self.regprops = regionprops_widget()
@@ -343,7 +349,7 @@ class SerialWidget(QWidget):
         channel_to_segment, channel_helper, channel_analysis = self.get_channels_to_use()
         print(f'Channels to segment: {channel_to_segment}, helper: {channel_helper}, analysis: {channel_analysis}')
         channel_analysis_names = [x.text() for x in self.qcbox_channel_analysis.selectedItems()]
-        reg_props = [k for k in self.check_props.keys() if self.check_props[k].isChecked()]
+        reg_props = [k.text() for k in self.check_props.selectedItems()]
 
         # run cellpose
         segmented, props = run_cellpose(
@@ -389,7 +395,7 @@ class SerialWidget(QWidget):
 
         channel_to_segment, channel_helper, channel_analysis = self.get_channels_to_use()
         channel_analysis_names = [x.text() for x in self.qcbox_channel_analysis.selectedItems()]
-        reg_props = [k for k in self.check_props.keys() if self.check_props[k].isChecked()]
+        reg_props = [k.text() for k in self.check_props.selectedItems()]
 
         for batch in file_list_partition:
             _, _ = run_cellpose(
@@ -584,7 +590,7 @@ class SerialWidget(QWidget):
         else:
             # If the label column is not present, use the row index
             # plus one to account for zero-based indexing
-            label = np.unique(labels_layer.value.data)[row+1]
+            label = np.unique(labels_layer.data)[row+1]
         labels_layer.selected_label = label
 
 
