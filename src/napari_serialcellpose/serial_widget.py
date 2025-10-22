@@ -169,28 +169,11 @@ class SerialWidget(QWidget):
         for p in props_types:
             self.check_props.addItem(p)
         self.property_options_group.glayout.addWidget(self.check_props, 0, 1, 1, 1)
-        """for ind, p in enumerate(props_types):
-            self.property_options_group.glayout.addWidget(QLabel(p), ind, 0, 1, 1)
-            self.check_props[p] = QCheckBox()
-            self.property_options_group.glayout.addWidget(self.check_props[p], ind, 1, 1, 1)"""
         
         self.property_options_group.glayout.addWidget(QLabel('Analysis channel'), 1, 0, 1, 1)
         self.qcbox_channel_analysis = QListWidget()
         self.qcbox_channel_analysis.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.property_options_group.glayout.addWidget(self.qcbox_channel_analysis, 1,1,1,1)
-
-        '''from napari_skimage.skimage_regionprops_widget import regionprops_widget
-        self.regprops = regionprops_widget()
-        self.regprops.viewer = self.viewer
-        self.regprops.reset_choices()
-        self.viewer.layers.events.inserted.connect(self.regprops.reset_choices)
-        self.viewer.layers.events.removed.connect(self.regprops.reset_choices)
-        from skimage.measure._regionprops import PROPS
-        available_properties = set(PROPS.values())
-        self.regprops.properties._default_choices = available_properties
-        #self.property_options_group = VHGroup('Properties Options', orientation='G')
-        #self._options_tab_layout.addWidget(self.property_options_group.gbox)
-        self.property_options_group.glayout.addWidget(self.regprops.native, ind+2, 0, 1, 1)'''
         
         self.mainoptions_group = VHGroup('Main options', orientation='G')
         self._segmentation_layout.addWidget(self.mainoptions_group.gbox)
@@ -284,20 +267,21 @@ class SerialWidget(QWidget):
         image_path = self.file_list.folder_path.joinpath(image_name)
 
         img = BioImage(image_path)
+        img_channel_names = img.channel_names
         if img.dims.C == 1:
             if 'S' in img.dims.order:
                 if img.dims.S == 1:
-                    self.viewer.add_image(img.data[0,0,0], name=image_name)
+                    self.viewer.add_image(img.data[0,0,0], name=img_channel_names[0])
                 else:
                     if self.check_no_rgb.isChecked():
-                        self.viewer.add_image(img.data[0,0,0], channel_axis=2, name=image_name)
+                        self.viewer.add_image(img.data[0,0,0], channel_axis=2, name=[f'{img_channel_names[0]}_{i}' for i in range(img.dims.S)])
                     else:
-                        self.viewer.add_image(img.data[0,0], rgb=True, name=image_name)
+                        self.viewer.add_image(img.data[0,0], rgb=True, name='RGB_image')
             else:
-                self.viewer.add_image(img.data[0,0,0], name=image_name)
+                self.viewer.add_image(img.data[0,0,0], name=img_channel_names[0])
         
         elif img.dims.C > 1:
-            self.viewer.add_image(img.data[0,:,0], channel_axis=0, name=image_name)
+            self.viewer.add_image(img.data[0,:,0], channel_axis=0, name=img_channel_names)
 
         if self.output_folder is not None:
             mask_path = Path(self.output_folder).joinpath(image_path.stem+'_mask.tif')
