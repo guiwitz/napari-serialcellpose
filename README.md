@@ -28,15 +28,19 @@ Alternatively, you can install the plugin via the napari plugin manager.
 
 ## Note on versions
 
-Versions older than 0.3.0 depend on the aicsimageio importer which is not supported anymore and which will likely lead to errors when trying to run the plugin. Version 0.3.0 moved to the [bioio](https://github.com/bioio-devs/bioio) importer and some improvements were made to the data handling but the core functionality is the same. **Version 0.3.0 is the last version that will support pre-SAM Cellpose models i.e. Cellpose=4.0. If you want to use Cellpose=4.0, please use version napari-serialcellpose=0.4.0 or later.** You can pick versions in the napari plugin manger or directly via pip e.g.:
+Versions older than 0.3.0 depend on the aicsimageio importer which is not supported anymore and which will likely lead to errors when trying to run the plugin. Version 0.3.0 moved to the [bioio](https://github.com/bioio-devs/bioio) importer and some improvements were made to the data handling but the core functionality is the same. **Version 0.3.0 is the last version that only supports pre-SAM Cellpose models i.e. Cellpose=4.0**. By default you will get the latest version of the plugin. If you want an earlier version, you can pick versions in the napari plugin manger or directly via pip e.g.:
 
-    pip install napari-serialcellpose==0.3.0
+    pip install napari-serialcellpose==0.3.0 
 
-### Potential issue with PyTorch
+For some time, the plugin will support both older Cellpose versions (CP<4.0) and newer versions (CP>=4.0). By default Cellpose4 gets installed with the plugin but you can revert to Cellpose3 if needed:
 
-Cellpose and therefore the plugin and napari can crash without warning in some cases with ```torch==1.12.0```. This can be fixed by reverting to an earlier version using:
-    
-    pip install torch==1.11.0
+    pip install cellpose<4
+
+This might be of interest if you trained specific models or have workflows relying on Cellpose3 models such as cyto2.
+
+### PyTorch and GPU
+
+Recent versions of PyTorch should detect whether a GPU is available or not and install the appropriate version. This includes acceleration on M-series macs via mps. One Linux and Windows, you can force GPU installation in case the above does not work (see below).
 
 ### GPU
 
@@ -48,9 +52,9 @@ In order to use a GPU:
 
 2. Make sure your have up-to-date drivers for your NVIDIA card installed.
 
-3. Re-install a GPU version of PyTorch via conda using a command that you can find [here](https://pytorch.org/get-started/locally/) (this takes care of the cuda toolkit, cudnn etc. so **no need to install manually anything more than the driver**). The command will look like this:
+3. Re-install a GPU version of PyTorch via conda using:
 
-        conda install pytorch torchvision cudatoolkit=11.3 -c pytorch
+        conda install pytorch-gpu torchvision -c conda-forge
 
 ### Plugin Updates
 
@@ -81,7 +85,7 @@ The main interface is shown below. The sequence of events should be the followin
 
 ### Properties
 
-10. After segmentation, properties of the objects can automatically be computed. You can select which properties should be computed in the Options tab. As defined in ```napari-skimage-regionprops``` properties are grouped by types. If you want to measure intensity properties such as mean intensity, you have to specify which channel (```Analysis channel```) you want to perform the measurement on.
+10. After segmentation, properties of the objects can automatically be computed. You can select which properties should be computed in the Options tab. Properties are those from the `regionprops_table` function of scikit-image. If you want to measure intensity properties such as mean intensity, you have to specify which channel (```Analysis channel```) you want to perform the measurement on.
 
 ### Output
 
