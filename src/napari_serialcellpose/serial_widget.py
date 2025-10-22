@@ -3,6 +3,7 @@ QSpinBox, QDoubleSpinBox, QLabel, QGridLayout, QHBoxLayout, QGroupBox, QComboBox
 QCheckBox, QListWidget, QAbstractItemView)
 from qtpy.QtCore import Qt
 import magicgui.widgets
+from magicgui.widgets import Table
 from napari.layers import Image
 
 from .folder_list_widget import FolderList
@@ -10,10 +11,11 @@ from .serial_analysis import run_cellpose, load_props, load_allprops
 
 from pathlib import Path
 import skimage.io
+from skimage.measure._regionprops import PROPS
 import numpy as np
 from cellpose import models
-from napari_skimage_regionprops._table import TableWidget
 from bioio import BioImage
+from natsort import natsorted
 
 import matplotlib
 matplotlib.use('Qt5Agg')
@@ -161,16 +163,17 @@ class SerialWidget(QWidget):
         props_types = [
             'size', 'intensity', 'perimeter', 'shape', 'position',
             'moments']
-        self.check_props = {}
-        for ind, p in enumerate(props_types):
-            self.property_options_group.glayout.addWidget(QLabel(p), ind, 0, 1, 1)
-            self.check_props[p] = QCheckBox()
-            self.property_options_group.glayout.addWidget(self.check_props[p], ind, 1, 1, 1)
+        props_types = natsorted(set(PROPS.values()))
+        self.check_props = QListWidget()#{}
+        self.check_props.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        for p in props_types:
+            self.check_props.addItem(p)
+        self.property_options_group.glayout.addWidget(self.check_props, 0, 1, 1, 1)
         
-        self.property_options_group.glayout.addWidget(QLabel('Analysis channel'), ind+1, 0, 1, 1)
+        self.property_options_group.glayout.addWidget(QLabel('Analysis channel'), 1, 0, 1, 1)
         self.qcbox_channel_analysis = QListWidget()
         self.qcbox_channel_analysis.setSelectionMode(QAbstractItemView.ExtendedSelection)
-        self.property_options_group.glayout.addWidget(self.qcbox_channel_analysis, ind+1,1,1,1)
+        self.property_options_group.glayout.addWidget(self.qcbox_channel_analysis, 1,1,1,1)
         
         self.mainoptions_group = VHGroup('Main options', orientation='G')
         self._segmentation_layout.addWidget(self.mainoptions_group.gbox)
@@ -264,20 +267,21 @@ class SerialWidget(QWidget):
         image_path = self.file_list.folder_path.joinpath(image_name)
 
         img = BioImage(image_path)
+        img_channel_names = img.channel_names
         if img.dims.C == 1:
             if 'S' in img.dims.order:
                 if img.dims.S == 1:
-                    self.viewer.add_image(img.data[0,0,0], name=image_name)
+                    self.viewer.add_image(img.data[0,0,0], name=img_channel_names[0])
                 else:
                     if self.check_no_rgb.isChecked():
-                        self.viewer.add_image(img.data[0,0,0], channel_axis=2, name=image_name)
+                        self.viewer.add_image(img.data[0,0,0], channel_axis=2, name=[f'{img_channel_names[0]}_{i}' for i in range(img.dims.S)])
                     else:
-                        self.viewer.add_image(img.data[0,0], rgb=True, name=image_name)
+                        self.viewer.add_image(img.data[0,0], rgb=True, name='RGB_image')
             else:
-                self.viewer.add_image(img.data[0,0,0], name=image_name)
+                self.viewer.add_image(img.data[0,0,0], name=img_channel_names[0])
         
         elif img.dims.C > 1:
-            self.viewer.add_image(img.data[0,:,0], channel_axis=0, name=image_name)
+            self.viewer.add_image(img.data[0,:,0], channel_axis=0, name=img_channel_names)
 
         if self.output_folder is not None:
             mask_path = Path(self.output_folder).joinpath(image_path.stem+'_mask.tif')
@@ -330,7 +334,7 @@ class SerialWidget(QWidget):
         channel_to_segment, channel_helper, channel_analysis = self.get_channels_to_use()
         print(f'Channels to segment: {channel_to_segment}, helper: {channel_helper}, analysis: {channel_analysis}')
         channel_analysis_names = [x.text() for x in self.qcbox_channel_analysis.selectedItems()]
-        reg_props = [k for k in self.check_props.keys() if self.check_props[k].isChecked()]
+        reg_props = [k.text() for k in self.check_props.selectedItems()]
 
         # run cellpose
         segmented, props = run_cellpose(
@@ -376,7 +380,7 @@ class SerialWidget(QWidget):
 
         channel_to_segment, channel_helper, channel_analysis = self.get_channels_to_use()
         channel_analysis_names = [x.text() for x in self.qcbox_channel_analysis.selectedItems()]
-        reg_props = [k for k in self.check_props.keys() if self.check_props[k].isChecked()]
+        reg_props = [k.text() for k in self.check_props.selectedItems()]
 
         for batch in file_list_partition:
             _, _ = run_cellpose(
@@ -504,13 +508,16 @@ class SerialWidget(QWidget):
 
         self.viewer.layers['mask'].properties = props
         if self.props_table is None:
-            self.props_table = TableWidget(layer=self.viewer.layers['mask'])
-            self._properties_layout.addWidget(self.props_table)
-        else:
-            self.props_table._layer = self.viewer.layers['mask'] 
-            self.props_table.update_content()
+            self.props_table = Table(name="Results Table")
+            self._properties_layout.addWidget(self.props_table.native)
+            self.props_table.value = props
+            self.props_table.read_only = True
+            self.props_table.native.clicked.connect(self.clicked_table)
 
-        prop_names = list(self.props_table.get_content().keys())
+        else:
+            self.props_table.value = props
+
+        prop_names = self.props_table.column_headers#list(self.props_table.get_content().keys())
         self.props_to_plot1.addItems(prop_names)
         self.props_to_plot2.addItems(prop_names)
         for i in range(np.min([len(prop_names),1])):#range(len(prop_names)):
@@ -531,7 +538,7 @@ class SerialWidget(QWidget):
 
         for ind, p in enumerate(prop_names):
             self.sc.ax[0,ind].clear()
-            self.sc.ax[0,ind].hist(self.props_table.get_content()[p], rwidth=0.85)
+            self.sc.ax[0,ind].hist(self.props_table[p], rwidth=0.85)
             self.sc.ax[0,ind].figure.canvas.draw()
             self.sc.ax[0,ind].tick_params(colors='black',labelsize=12)
             self.sc.ax[0,ind].set_title(p, fontsize=15, color='black')        
@@ -557,6 +564,20 @@ class SerialWidget(QWidget):
             self.filterprop_max_slider.value = max_val
 
             self.update_filterprop()
+
+    def clicked_table(self, event):
+        """Highlight label selected in table"""
+
+        labels_layer = self.viewer.layers['mask']
+        row = self.props_table.native.currentRow()
+        if "label" in self.props_table.column_headers:
+            label = int(self.props_table["label"][row])
+        else:
+            # If the label column is not present, use the row index
+            # plus one to account for zero-based indexing
+            label = np.unique(labels_layer.data)[row+1]
+        labels_layer.selected_label = label
+
 
     def update_filterprop(self, value=None):
         """Update filterprop plot"""

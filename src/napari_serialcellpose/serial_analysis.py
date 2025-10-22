@@ -3,7 +3,6 @@ import warnings
 import skimage.io
 import skimage.segmentation
 from skimage.measure import regionprops_table as sk_regionprops_table
-from napari_skimage_regionprops._regionprops import regionprops_table
 import pandas as pd
 import numpy as np
 from bioio import BioImage
@@ -148,13 +147,15 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
     merged_options = {**default_options, **options_yml}
 
     if __cp_version__ > 3:
-        channel_axis = None
+        cellpose_output = cellpose_model.eval(
+            image,**merged_options
+    )
     else:
         channel_axis = 0
-    cellpose_output = cellpose_model.eval(
-        image, channels=channels, channel_axis=channel_axis,
-        **merged_options
-    )
+        cellpose_output = cellpose_model.eval(
+            image, channels=channels, channel_axis=channel_axis,
+            **merged_options
+        )
     cellpose_output = cellpose_output[0]
 
     if clear_border is True:
@@ -218,29 +219,15 @@ def compute_props(
             warnings.warn("Computing intensity features but no intensity image provided. Result will be zero.")
         intensity_image = np.zeros(label_image.shape)[:,:,np.newaxis]
 
-    props = regionprops_table(
-        image=intensity_image[:,:,-1], labels=label_image,
-        size='size' in properties,
-        perimeter='perimeter' in properties,
-        shape='shape' in properties,
-        position='position' in properties,
-        moments='moments' in properties,
-        intensity=False,
-        )
-
-    if 'intensity' in properties:
-        intensity_measure = sk_regionprops_table(
-            label_image=label_image, intensity_image=intensity_image,
-            properties=['max_intensity', 'mean_intensity', 'min_intensity'])
-        intensity_measure = pd.DataFrame(intensity_measure)
-        if channel_names is not None:
-            for ind, c in enumerate(channel_names):
-                intensity_measure.rename(
-                    columns={
-                        f'mean_intensity-{ind}': f'mean_intensity-{c}',
-                        f'min_intensity-{ind}': f'min_intensity-{c}',
-                        f'max_intensity-{ind}': f'max_intensity-{c}'}, inplace=True)
-        props = pd.concat([props, intensity_measure], axis=1)
+    props = sk_regionprops_table(label_image=label_image, intensity_image=intensity_image,
+                                 properties=properties)
+    props = pd.DataFrame(props)
+    for x in ['intensity_max', 'intensity_mean', 'intensity_min']:
+        if x in properties:
+            if channel_names is not None:
+                for ind, c in enumerate(channel_names):
+                    props.rename(
+                        columns={f'{x}-{ind}': f'{x}-{c}'}, inplace=True)
 
     if output_path is not None:
         props.to_csv(output_path.joinpath(image_name.stem+'_props.csv'), index=False)
