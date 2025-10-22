@@ -147,13 +147,15 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
     merged_options = {**default_options, **options_yml}
 
     if __cp_version__ > 3:
-        channel_axis = None
+        cellpose_output = cellpose_model.eval(
+            image,**merged_options
+    )
     else:
         channel_axis = 0
-    cellpose_output = cellpose_model.eval(
-        image, channels=channels, channel_axis=channel_axis,
-        **merged_options
-    )
+        cellpose_output = cellpose_model.eval(
+            image, channels=channels, channel_axis=channel_axis,
+            **merged_options
+        )
     cellpose_output = cellpose_output[0]
 
     if clear_border is True:
