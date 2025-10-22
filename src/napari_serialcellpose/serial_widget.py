@@ -15,6 +15,7 @@ from skimage.measure._regionprops import PROPS
 import numpy as np
 from cellpose import models
 from bioio import BioImage
+from natsort import natsorted
 
 import matplotlib
 matplotlib.use('Qt5Agg')
@@ -162,7 +163,7 @@ class SerialWidget(QWidget):
         props_types = [
             'size', 'intensity', 'perimeter', 'shape', 'position',
             'moments']
-        props_types = available_properties = set(PROPS.values())
+        props_types = natsorted(set(PROPS.values()))
         self.check_props = QListWidget()#{}
         self.check_props.setSelectionMode(QAbstractItemView.ExtendedSelection)
         for p in props_types:
