@@ -1,3 +1,4 @@
+from os import name
 from pathlib import Path
 import warnings
 import skimage.io
@@ -11,7 +12,7 @@ import yaml
 from .utils import get_cp_version
 __cp_version__ = get_cp_version()
 
-def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
+def run_cellpose(image_path, scene, cellpose_model, output_path, scaling_factor=1,
                  diameter=None, flow_threshold=0.4, cellprob_threshold=0.0,
                  clear_border=True, channel_to_segment=0, channel_helper=0,
                  channel_measure=None, channel_measure_names=None, properties=None,
@@ -20,8 +21,10 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
     
     Parameters
     ----------
-    image_path : str or Path
+    image_path : str or Path or list of str or Path
         path to image
+    scene : int, or list of ints, default None
+        index of scene(s) to process
     cellpose_model : cellpose model instance
     output_path : str or Path
         path to output folder
@@ -37,10 +40,13 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
         remove cells touching border
     channel_to_segment : int, default 0
         index of channel to segment, if image is multi-channel
+        for historical reasons, channel index is 1-indexed; 0 means single-channel image
     channel_helper : int, default 0
         index of helper nucleus channel for models using both cell and nucleus channels
+        for historical reasons, channel index is 1-indexed; 0 means single-channel image
     channel_measure: int or list of int, default None
         index of channel(s) in which to measure intensity
+        this channel is different from the segmentation and helper channels and is 0-indexed
     channel_measure_names: list of str, default None
         names of channel(s) in which to measure intensity
     properties = list of str, default None
@@ -58,14 +64,30 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
         properties of segmented cells for the last analyzed image
     """
 
+    if isinstance(image_path, list) and isinstance(scene, list):
+        if len(image_path) != len(scene):
+            raise ValueError('if image_path and scene are both lists, they must have the same length')
     if not isinstance(image_path, list):
         image_path = [image_path]
+
+    if scene is not None and not isinstance(scene, list):
+        scene = [scene]
+
+    scene_iterator = scene
+    if scene is None:
+        scene_iterator = [None]*len(image_path)
 
     if properties is None:
         properties = []
 
     channels = [0, 0]
-    bioimage = [BioImage(x) for x in image_path]
+    #bioimage = [BioImage(x) for x in image_path]
+    bioimage = []
+    for impath, sc in zip(image_path, scene_iterator):
+        bim = BioImage(impath)
+        if sc is not None:
+            bim.set_scene(sc)
+        bioimage.append(bim)
     img = bioimage[0]
     image_measure = [None]*len(image_path)
 
@@ -164,7 +186,7 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
         cellpose_output = [skimage.segmentation.relabel_sequential(im)[0] for im in cellpose_output]
     
     # save output
-    for im, im_m, p in zip(cellpose_output, image_measure, image_path):
+    for im, im_m, p, s in zip(cellpose_output, image_measure, image_path, scene_iterator):
         props=None
         if len(properties) > 0:
             props = compute_props(
@@ -172,13 +194,15 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
                     intensity_image=im_m,
                     output_path=output_path,
                     image_name=p,
+                    scene=s,
                     properties=properties,
                     channel_names=channel_measure_names
                     )
 
         if output_path is not None:
             output_path = Path(output_path)
-            save_path = output_path.joinpath(p.stem+'_mask.tif')
+            scene_suffix = '' if scene is None else f'_scene{s}'
+            save_path = output_path.joinpath(p.stem + scene_suffix + '_mask.tif')
             skimage.io.imsave(save_path, im, check_contrast=False)
 
     return cellpose_output, props
@@ -186,7 +210,7 @@ def run_cellpose(image_path, cellpose_model, output_path, scaling_factor=1,
 
 def compute_props(
     label_image, intensity_image, output_path=None,
-    image_name=None, properties=None, channel_names=None):
+    image_name=None, scene=None, properties=None, channel_names=None):
     """Compute properties of segmented image.
     
     Parameters
@@ -199,6 +223,8 @@ def compute_props(
         path to output folder
     image_name : str or Path
         either path to image or image name
+    scene : int, default None
+        index of scene
     properties = list of str, default None
         list of types of properties to compute. Any of 'intensity', 'perimeter', 'shape', 'position', 'moments'
     channel_names: list of str, default None
@@ -230,7 +256,9 @@ def compute_props(
                         columns={f'{x}-{ind}': f'{x}-{c}'}, inplace=True)
 
     if output_path is not None:
-        props.to_csv(output_path.joinpath(image_name.stem+'_props.csv'), index=False)
+        scene_suffix = '' if scene is None else f'_scene{scene}'
+        name = output_path.joinpath(image_name.stem + scene_suffix + '_props.csv')
+        props.to_csv(name, index=False)
 
     return props
 
@@ -294,4 +322,23 @@ def load_allprops(output_path):
     all_props.to_csv(output_path.joinpath('summary.csv'), index=False)
 
     return all_props
+
+def get_scenes(image_path):
+    """Get number of scenes in a bioimage file.
+    
+    Parameters
+    ----------
+    image_path : str or Path
+        path to image
+
+    Returns
+    -------
+    num_scenes : int
+        number of scenes in image
+    """
+
+    img = BioImage(image_path)
+    num_scenes = len(img.scenes)
+    
+    return num_scenes
 

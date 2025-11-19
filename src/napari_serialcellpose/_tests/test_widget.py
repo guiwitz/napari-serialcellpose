@@ -1,3 +1,4 @@
+import pooch
 from napari_serialcellpose import SerialWidget
 import numpy as np
 import pandas as pd
@@ -83,6 +84,40 @@ def test_analyse_single_image_save(make_napari_viewer):
 
     assert len(list(output_dir.glob('*mask.tif'))) == 1
     assert len(list(output_dir.joinpath('tables').glob('*_props.csv'))) == 1
+
+def test_analyse_single_multiscene_image(make_napari_viewer):
+    
+    viewer = make_napari_viewer()
+    widget = SerialWidget(viewer)
+
+    import pooch
+    mypath = Path('src/napari_serialcellpose/_tests/data/single_file_multiscene/')
+    mypath.mkdir(exist_ok=True)
+    pooch.retrieve(
+            url="https://downloads.openmicroscopy.org/images/ND2/zenodo-15046688/N1_file_bugged_raw-version.nd2",
+            known_hash=None,
+            fname = 'N1_file_bugged_raw-version.nd2',
+            path=mypath
+            )
+
+    output_dir = Path('src/napari_serialcellpose/_tests/data/analyzed_single_multiscene')
+    if output_dir.exists():
+        shutil.rmtree(output_dir)
+    output_dir.mkdir(exist_ok=True)
+
+    widget.file_list.update_from_path(mypath)
+    widget.output_folder = output_dir
+    widget.file_list.setCurrentRow(0)
+
+    widget.qcbox_model_choice.setCurrentIndex(
+        [widget.qcbox_model_choice.itemText(i) for i in range(widget.qcbox_model_choice.count())].index('cyto2')
+    )
+    
+    # set diameter and run segmentation
+    widget.spinbox_diameter.setValue(200)
+    widget._on_click_run_on_current()
+
+    assert len(list(output_dir.glob('*scene0_mask.tif'))) == 1
 
 def test_analyse_multi_image(make_napari_viewer):
     """Test analysis of multiple images in a folder. No properties are analyzed."""
