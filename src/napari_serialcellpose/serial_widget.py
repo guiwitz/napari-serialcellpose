@@ -5,6 +5,7 @@ from qtpy.QtCore import Qt
 import magicgui.widgets
 from magicgui.widgets import Table
 from napari.layers import Image
+from yaml import ScalarNode
 
 from .folder_list_widget import FolderList
 from .serial_analysis import run_cellpose, load_props, load_allprops
@@ -23,6 +24,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationTool
 from matplotlib.figure import Figure
 
 from .utils import get_cp_version
+from .serial_analysis import get_scenes
 __cp_version__ = get_cp_version()
 
 class SerialWidget(QWidget):
@@ -402,26 +404,37 @@ class SerialWidget(QWidget):
         file_list = [f for f in file_list if f[0] != '.']
         file_list = [self.file_list.folder_path.joinpath(x) for x in file_list]
         file_list = [f for f in file_list if f.is_file()]
-        from .serial_analysis import get_scenes
-        scene_number = [get_scenes(f) for f in file_list]
-        file_list = list(np.ravel(np.array([[f for i in range(s)] for f, s in zip(file_list, scene_number)])))
-        scene_list = np.ravel(np.array([np.arange(s, dtype=np.uint8) for s in scene_number])).tolist()
 
+        file_list_partition = []
+        scene_list_partition = None
+        for f in file_list:
+            if self.spinbox_multi_image.isEnabled():
+                if scene_list_partition is None:
+                    scene_list_partition = []
+                num_scenes = get_scenes(f)
+                for s in range(num_scenes):
+                    file_list_partition.append(f)
+                    scene_list_partition.append(s)
+            else:
+                file_list_partition.append(f)
+            
         n = self.spinbox_batch_size.value()
-        file_list_partition = [file_list[i:i + n] for i in range(0, len(file_list), n)]
-        scene_list_partition = [scene_list[i:i + n] for i in range(0, len(scene_list), n)]
+        file_list_partition = [file_list_partition[i:i + n] for i in range(0, len(file_list_partition), n)]
+        if scene_list_partition is not None:
+            scene_list_partition = [scene_list_partition[i:i + n] for i in range(0, len(scene_list_partition), n)]
+        else:
+            scene_list_partition = [None]*len(file_list_partition)
 
         self.cellpose_model, diameter = self.get_cellpose_model(model_type=model_type)
 
         channel_to_segment, channel_helper, channel_analysis = self.get_channels_to_use()
         channel_analysis_names = [x.text() for x in self.qcbox_channel_analysis.selectedItems()]
         reg_props = [k.text() for k in self.check_props.selectedItems()]
-        
 
-        for batch, scenes in zip(file_list_partition, scene_list_partition):
+        for file, scene in zip(file_list_partition, scene_list_partition):
             _, _ = run_cellpose(
-                image_path=batch,
-                scene=scenes,
+                image_path=file,
+                scene=scene,
                 cellpose_model=self.cellpose_model,
                 output_path=self.output_folder,
                 diameter=diameter,

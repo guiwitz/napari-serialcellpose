@@ -73,15 +73,19 @@ def run_cellpose(image_path, scene, cellpose_model, output_path, scaling_factor=
     if scene is not None and not isinstance(scene, list):
         scene = [scene]
 
+    scene_iterator = scene
+    if scene is None:
+        scene_iterator = [None]*len(image_path)
+
     if properties is None:
         properties = []
 
     channels = [0, 0]
     #bioimage = [BioImage(x) for x in image_path]
     bioimage = []
-    for impath, sc in zip(image_path, scene):
+    for impath, sc in zip(image_path, scene_iterator):
         bim = BioImage(impath)
-        if scene is not None:
+        if sc is not None:
             bim.set_scene(sc)
         bioimage.append(bim)
     img = bioimage[0]
@@ -182,9 +186,6 @@ def run_cellpose(image_path, scene, cellpose_model, output_path, scaling_factor=
         cellpose_output = [skimage.segmentation.relabel_sequential(im)[0] for im in cellpose_output]
     
     # save output
-    scene_iterator = scene
-    if scene is None:
-        scene_iterator = [None]*len(image_path)
     for im, im_m, p, s in zip(cellpose_output, image_measure, image_path, scene_iterator):
         props=None
         if len(properties) > 0:
