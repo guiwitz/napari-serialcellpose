@@ -75,6 +75,12 @@ class SerialWidget(QWidget):
 
         self.file_list = FolderList(napari_viewer)
         self._segmentation_layout.addWidget(self.file_list)
+        self.spinbox_multi_image = QSpinBox()
+        self.spinbox_multi_image.setValue(0)
+        self.spinbox_multi_image.setMaximum(0)
+        self.spinbox_multi_image.hide()
+        self.spinbox_multi_image.setEnabled(False)
+        self._segmentation_layout.addWidget(self.spinbox_multi_image)
 
         self.folder_group = VHGroup('Folder selection')
         self._segmentation_layout.addWidget(self.folder_group.gbox)
@@ -239,6 +245,7 @@ class SerialWidget(QWidget):
         self.btn_select_options_file.clicked.connect(self._on_click_select_options_file)
         self.btn_select_output_folder.clicked.connect(self._on_click_select_output_folder)
         self.file_list.currentItemChanged.connect(self._on_select_file)
+        self.spinbox_multi_image.valueChanged.connect(self._on_change_scene)
         self.btn_run_on_current.clicked.connect(self._on_click_run_on_current)
         self.btn_run_on_folder.clicked.connect(self._on_click_run_on_folder)
         self.qcbox_model_choice.currentTextChanged.connect(self._on_change_modeltype)
@@ -252,12 +259,13 @@ class SerialWidget(QWidget):
         self.choose_filtering_prop.currentIndexChanged.connect(self._on_update_filtering_sliders)
         self.viewer.layers.events.inserted.connect(self._on_change_layers)
 
-    def open_file(self):
+    def open_file(self, first_time=True):
         """Open file selected in list. Returns True if file was opened."""
-
-        # clear existing layers.
-        self.viewer.layers.clear()
         
+        # clear existing layers.
+        while len(self.viewer.layers) > 0:
+            self.viewer.layers.clear()
+
         # if file list is empty stop here
         if self.file_list.currentItem() is None:
             return False
@@ -268,6 +276,21 @@ class SerialWidget(QWidget):
 
         img = BioImage(image_path)
         img_channel_names = img.channel_names
+        num_scenes = len(img.scenes)
+        if num_scenes > 1:
+            self.spinbox_multi_image.show()
+            self.spinbox_multi_image.setEnabled(True)
+        else:
+            self.spinbox_multi_image.hide()
+            self.spinbox_multi_image.setEnabled(False)
+        if first_time:
+            self.spinbox_multi_image.valueChanged.disconnect(self._on_change_scene)
+            self.spinbox_multi_image.setMaximum(num_scenes-1)
+            self.spinbox_multi_image.setValue(0)
+            self.spinbox_multi_image.valueChanged.connect(self._on_change_scene)
+        else:
+            scene_index = self.spinbox_multi_image.value()
+            img.set_scene(scene_index)
         if img.dims.C == 1:
             if 'S' in img.dims.order:
                 if img.dims.S == 1:
@@ -284,7 +307,8 @@ class SerialWidget(QWidget):
             self.viewer.add_image(img.data[0,:,0], channel_axis=0, name=img_channel_names)
 
         if self.output_folder is not None:
-            mask_path = Path(self.output_folder).joinpath(image_path.stem+'_mask.tif')
+            scene_suffix = '' if num_scenes == 1 else f'_scene{self.spinbox_multi_image.value()}'
+            mask_path = Path(self.output_folder).joinpath(image_path.stem + scene_suffix + '_mask.tif')
             if mask_path.exists():
                 mask = skimage.io.imread(mask_path)
                 self.viewer.add_labels(mask, name='mask')
@@ -315,6 +339,10 @@ class SerialWidget(QWidget):
         success = self.open_file()
         if not success:
             return False
+        
+    def _on_change_scene(self):
+
+        self.open_file(first_time=False)
 
     def _on_click_select_options_file(self):
         """Interactively select cellpose model"""
@@ -335,10 +363,12 @@ class SerialWidget(QWidget):
         print(f'Channels to segment: {channel_to_segment}, helper: {channel_helper}, analysis: {channel_analysis}')
         channel_analysis_names = [x.text() for x in self.qcbox_channel_analysis.selectedItems()]
         reg_props = [k.text() for k in self.check_props.selectedItems()]
+        scene = self.spinbox_multi_image.value() if self.spinbox_multi_image.isEnabled() else None
 
         # run cellpose
         segmented, props = run_cellpose(
             image_path=image_path,
+            scene=scene,
             cellpose_model=self.cellpose_model,
             output_path=self.output_folder,
             diameter=diameter,
@@ -372,19 +402,26 @@ class SerialWidget(QWidget):
         file_list = [f for f in file_list if f[0] != '.']
         file_list = [self.file_list.folder_path.joinpath(x) for x in file_list]
         file_list = [f for f in file_list if f.is_file()]
+        from .serial_analysis import get_scenes
+        scene_number = [get_scenes(f) for f in file_list]
+        file_list = list(np.ravel(np.array([[f for i in range(s)] for f, s in zip(file_list, scene_number)])))
+        scene_list = np.ravel(np.array([np.arange(s, dtype=np.uint8) for s in scene_number])).tolist()
 
         n = self.spinbox_batch_size.value()
         file_list_partition = [file_list[i:i + n] for i in range(0, len(file_list), n)]
+        scene_list_partition = [scene_list[i:i + n] for i in range(0, len(scene_list), n)]
 
         self.cellpose_model, diameter = self.get_cellpose_model(model_type=model_type)
 
         channel_to_segment, channel_helper, channel_analysis = self.get_channels_to_use()
         channel_analysis_names = [x.text() for x in self.qcbox_channel_analysis.selectedItems()]
         reg_props = [k.text() for k in self.check_props.selectedItems()]
+        
 
-        for batch in file_list_partition:
+        for batch, scenes in zip(file_list_partition, scene_list_partition):
             _, _ = run_cellpose(
                 image_path=batch,
+                scene=scenes,
                 cellpose_model=self.cellpose_model,
                 output_path=self.output_folder,
                 diameter=diameter,
