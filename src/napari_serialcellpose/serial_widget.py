@@ -365,7 +365,6 @@ class SerialWidget(QWidget):
         self.cellpose_model, diameter = self.get_cellpose_model(model_type=model_type)
         
         channel_to_segment, channel_helper, channel_analysis = self.get_channels_to_use()
-        print(f'Channels to segment: {channel_to_segment}, helper: {channel_helper}, analysis: {channel_analysis}')
         channel_analysis_names = [x.text() for x in self.qcbox_channel_analysis.selectedItems()]
         reg_props = [k.text() for k in self.check_props.selectedItems()]
         scene = self.spinbox_multi_image.value() if self.spinbox_multi_image.isEnabled() else None
@@ -670,8 +669,6 @@ class SerialWidget(QWidget):
                 (current_props[filtering_props] > self.filterprop_min_slider.value)
             ]['label'].values
             new_mask = np.isin(labels_layer.data, filtered_labels)*labels_layer.data
-            print(np.unique(new_mask))
-            print(np.unique(labels_layer.data))
             if 'filtered_mask' in self.viewer.layers:
                 self.viewer.layers.remove('filtered_mask')
             self.viewer.add_labels(new_mask, name='filtered_mask')
