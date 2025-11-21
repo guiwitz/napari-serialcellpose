@@ -233,7 +233,7 @@ class SerialWidget(QWidget):
         self._summary_layout.addWidget(QLabel('Filtering min'), 6, 0, 1, 1)
         self.filterprop_min_slider = magicgui.widgets.FloatSlider(min=0, max=1, step=0.01, value=1)
         self._summary_layout.addWidget(self.filterprop_min_slider.native, 6, 1, 1, 1)
-        self._summary_layout.addWidget(QLabel('Filtering min'), 7, 0, 1, 1)
+        self._summary_layout.addWidget(QLabel('Filtering max'), 7, 0, 1, 1)
         self.filterprop_max_slider = magicgui.widgets.FloatSlider(min=0, max=1, step=0.01, value=1)
         self._summary_layout.addWidget(self.filterprop_max_slider.native, 7, 1, 1, 1)
 
@@ -314,7 +314,10 @@ class SerialWidget(QWidget):
             if mask_path.exists():
                 mask = skimage.io.imread(mask_path)
                 self.viewer.add_labels(mask, name='mask')
-                props = load_props(self.output_folder, image_name)
+                scene=None
+                if self.spinbox_multi_image.isEnabled():
+                    scene = self.spinbox_multi_image.value()
+                props = load_props(self.output_folder, image_name, scene=scene)
                 if props is not None:
                     self.add_table_props(props)
 

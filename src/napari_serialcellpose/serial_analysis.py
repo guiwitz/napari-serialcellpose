@@ -263,7 +263,7 @@ def compute_props(
     return props
 
 
-def load_props(output_path, image_name):
+def load_props(output_path, image_name, scene=None):
     """Load properties for an analyzed image.
     
     Parameters
@@ -272,7 +272,9 @@ def load_props(output_path, image_name):
         path to output folder
     image_name : str or Path
         either path to image or image name
-    
+    scene : int, default None
+        index of scene
+
     Returns
     -------
     props : pandas dataframe
@@ -284,7 +286,8 @@ def load_props(output_path, image_name):
     output_path = Path(output_path).joinpath('tables')
 
     # load properties
-    props_path = Path(output_path).joinpath(image_name.stem+'_props.csv')
+    scene_suffix = '' if scene is None else f'_scene{scene}'
+    props_path = Path(output_path).joinpath(image_name.stem + scene_suffix + '_props.csv')
     props=None
     if props_path.exists():
         props = pd.read_csv(props_path)
@@ -316,6 +319,9 @@ def load_allprops(output_path):
     for p in table_names:
         props = pd.read_csv(p)
         props['name'] = p.stem
+        if 'scene' in p.stem:
+            props['image_name'] = p.stem.split('_scene')[0]
+            props['scene'] = int(p.stem.split('_scene')[1].split('_')[0])
         all_props.append(props)
     all_props = pd.concat(all_props)
 
