@@ -614,9 +614,10 @@ class SerialWidget(QWidget):
 
             self.filterprop_max_slider.min = min_val
             self.filterprop_max_slider.max = max_val
-            self.filterprop_max_slider.value = max_val
+            self.filterprop_max_slider.value = 0.99 * max_val
 
             self.update_filterprop()
+        
 
     def clicked_table(self, event):
         """Highlight label selected in table"""
@@ -656,6 +657,24 @@ class SerialWidget(QWidget):
                     self.sc_sum.ax[0,ind].figure.canvas.draw()
                     self.sc_sum.ax[0,ind].tick_params(colors='black',labelsize=12)
                     self.sc_sum.ax[0,ind].set_title(prop_names[ind], fontsize=15, color='black')
+
+            # create a mask with only the filtered labels
+        if 'mask' in self.viewer.layers:
+            labels_layer = self.viewer.layers['mask']
+            filtering_props = self.choose_filtering_prop.currentText()
+            current_props = self.props_table.to_dataframe()
+            if 'label' not in current_props:
+                current_props['label'] = np.arange(1, labels_layer.data.max()+1)
+            filtered_labels = current_props[
+                (current_props[filtering_props] < self.filterprop_max_slider.value) &
+                (current_props[filtering_props] > self.filterprop_min_slider.value)
+            ]['label'].values
+            new_mask = np.isin(labels_layer.data, filtered_labels)*labels_layer.data
+            print(np.unique(new_mask))
+            print(np.unique(labels_layer.data))
+            if 'filtered_mask' in self.viewer.layers:
+                self.viewer.layers.remove('filtered_mask')
+            self.viewer.add_labels(new_mask, name='filtered_mask')
 
 
 class VHGroup():
