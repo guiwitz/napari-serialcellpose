@@ -110,7 +110,8 @@ def run_cellpose(image_path, scene, cellpose_model, output_path, scaling_factor=
                 if force_no_rgb:
                     if channel_helper == 0:
                         channel_to_segment = [0, np.max([0,channel_to_segment-1])]
-                        image = [im[:,:,channel_to_segment-1] for im in image]
+                        image = [im[:,:,channel_to_segment] for im in image]
+                        image = [np.moveaxis(im, -1, 0) for im in image]
                         channels = [0, 0]
                     else:
                         channel_to_segment = np.max([0,channel_to_segment-1])
@@ -155,7 +156,6 @@ def run_cellpose(image_path, scene, cellpose_model, output_path, scaling_factor=
     for i in range(len(image)):
         if scaling_factor != 1:
             image[i] = image[i][::scaling_factor, ::scaling_factor]
-    
     # handle yaml options file
     default_options = {'diameter': diameter, 'flow_threshold': flow_threshold, 'cellprob_threshold': cellprob_threshold}
     options_yml = {}
@@ -241,7 +241,8 @@ def compute_props(
         properties = []
         
     if intensity_image is None:
-        if "intensity" in properties:
+        # check if 'intensity' appears in any property
+        if any(['intensity' in prop for prop in properties]):
             warnings.warn("Computing intensity features but no intensity image provided. Result will be zero.")
         intensity_image = np.zeros(label_image.shape)[:,:,np.newaxis]
 
