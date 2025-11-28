@@ -2,6 +2,67 @@
 requires = ["setuptools", "wheel", "setuptools_scm"]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "napari-serialcellpose"
+dynamic = ["version"]
+description = "A simple plugin to batch segment cells with cellpose"
+readme = "README.md"
+license = "BSD-3-Clause"
+requires-python = ">=3.10"
+authors = [
+    { name = "Guillaume Witz", email = "guillaume.witz@unibe.ch" }
+]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "Framework :: napari",
+    "Topic :: Software Development :: Testing",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "cellpose",
+    "numpy",
+    "magicgui",
+    "qtpy",
+    "matplotlib",
+    "bioio",
+    "bioio-tifffile",
+]
+
+[project.optional-dependencies]
+testing = [
+    "tox",
+    "pytest",
+    "pytest-cov",
+    "pytest-qt",
+    "napari",
+    "pyqt5",
+    "cellpose < 4",
+    "bioio-nd2",
+]
+
+[project.urls]
+"Bug Tracker" = "https://github.com/guiwitz/napari-serialcellpose/issues"
+"Documentation" = "https://github.com/guiwitz/napari-serialcellpose#README.md"
+"Source Code" = "https://github.com/guiwitz/napari-serialcellpose"
+"User Support" = "https://github.com/guiwitz/napari-serialcellpose/issues"
+
+[project.entry-points."napari.manifest"]
+napari-serialcellpose = "napari_serialcellpose:napari.yaml"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"*" = ["*.yaml"]
 
 [tool.setuptools_scm]
 write_to = "src/napari_serialcellpose/_version.py"
