@@ -71,7 +71,8 @@ def run_cellpose(image_path, scene, cellpose_model, output_path, scaling_factor=
         image_path = [image_path]
 
     if scene is not None and not isinstance(scene, list):
-        scene = [scene]
+        # if a single value is provided, it should be applied to all images
+        scene = [scene] * len(image_path)
 
     scene_iterator = scene
     if scene is None:
